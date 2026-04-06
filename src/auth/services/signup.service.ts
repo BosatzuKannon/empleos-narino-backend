@@ -20,17 +20,33 @@ export class SignupService {
 
   constructor(private configService: ConfigService) {
     const region = this.configService.getOrThrow<string>('AWS_REGION');
-    
-    this.TABLE_NAME = this.configService.getOrThrow<string>('DYNAMODB_TABLE_NAME');
+
+    this.TABLE_NAME = this.configService.getOrThrow<string>(
+      'DYNAMODB_TABLE_NAME',
+    );
     this.CLIENT_ID = this.configService.getOrThrow<string>('COGNITO_CLIENT_ID');
-    this.USER_POOL_ID = this.configService.getOrThrow<string>('COGNITO_USER_POOL_ID');
+    this.USER_POOL_ID = this.configService.getOrThrow<string>(
+      'COGNITO_USER_POOL_ID',
+    );
 
     this.cognitoClient = new CognitoIdentityProviderClient({ region });
-    this.docClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
+    this.docClient = DynamoDBDocumentClient.from(
+      new DynamoDBClient({ region }),
+    );
   }
 
   async signUp(signUpDto: SignUpDto) {
-    const { email, password, nombres, apellidos, telefono, user_type, fecha_nacimiento, ciudad, nombre_empresa } = signUpDto;
+    const {
+      email,
+      password,
+      nombres,
+      apellidos,
+      telefono,
+      user_type,
+      fecha_nacimiento,
+      ciudad,
+      nombre_empresa,
+    } = signUpDto;
 
     try {
       const cognitoParams = {
@@ -46,19 +62,25 @@ export class SignupService {
         ],
       };
 
-      const signUpResponse = await this.cognitoClient.send(new SignUpCommand(cognitoParams));
+      const signUpResponse = await this.cognitoClient.send(
+        new SignUpCommand(cognitoParams),
+      );
       const cognito_id = signUpResponse.UserSub;
 
-      await this.cognitoClient.send(new AdminConfirmSignUpCommand({
-        UserPoolId: this.USER_POOL_ID,
-        Username: email,
-      }));
+      await this.cognitoClient.send(
+        new AdminConfirmSignUpCommand({
+          UserPoolId: this.USER_POOL_ID,
+          Username: email,
+        }),
+      );
 
-      await this.cognitoClient.send(new AdminUpdateUserAttributesCommand({
-        UserPoolId: this.USER_POOL_ID,
-        Username: email,
-        UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
-      }));
+      await this.cognitoClient.send(
+        new AdminUpdateUserAttributesCommand({
+          UserPoolId: this.USER_POOL_ID,
+          Username: email,
+          UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
+        }),
+      );
 
       const userItem = {
         pk: `USER#${cognito_id || email}`,
@@ -75,21 +97,27 @@ export class SignupService {
         created_at: new Date().toISOString(),
       };
 
-      await this.docClient.send(new PutCommand({
-        TableName: this.TABLE_NAME,
-        Item: userItem,
-      }));
+      await this.docClient.send(
+        new PutCommand({
+          TableName: this.TABLE_NAME,
+          Item: userItem,
+        }),
+      );
 
       return {
         statusCode: 200,
         message: 'Registro exitoso. El usuario puede iniciar sesión.',
       };
-
     } catch (error) {
       console.error('Error durante el registro del usuario:', error);
+
+      // Verificamos si es un Error estándar para extraer el mensaje de forma segura
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error desconocido de AWS';
+
       throw new InternalServerErrorException({
         message: 'Error al registrar el usuario.',
-        error: error.message,
+        error: errorMessage,
       });
     }
   }

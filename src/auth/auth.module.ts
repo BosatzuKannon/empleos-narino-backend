@@ -4,6 +4,6 @@ import { SignupService } from './services/signup.service';
 
 @Module({
   controllers: [AuthController],
-  providers: [SignupService]
+  providers: [SignupService],
 })
 export class AuthModule {}

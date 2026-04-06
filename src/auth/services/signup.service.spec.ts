@@ -11,7 +11,8 @@ describe('SignupService', () => {
     // 1. Mockeamos el ConfigService para simular las variables de entorno
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
-        const config = {
+        // Le decimos a TypeScript que este objeto solo tiene llaves y valores string
+        const config: Record<string, string> = {
           AWS_REGION: 'us-east-2',
           DYNAMODB_TABLE_NAME: 'job_portal',
           COGNITO_CLIENT_ID: 'test-client-id',
@@ -53,13 +54,15 @@ describe('SignupService', () => {
 
     it('debería registrar un usuario exitosamente en Cognito y DynamoDB', async () => {
       // Engañamos a TypeScript casteando los clientes a 'any' antes de espiar 'send'
-      const cognitoSendMock = jest.spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({ UserSub: 'mock-cognito-id-123' }) 
-        .mockResolvedValueOnce({}) 
-        .mockResolvedValueOnce({}); 
+      const cognitoSendMock = jest
+        .spyOn(service['cognitoClient'] as any, 'send')
+        .mockResolvedValueOnce({ UserSub: 'mock-cognito-id-123' })
+        .mockResolvedValueOnce({})
+        .mockResolvedValueOnce({});
 
-      const dynamoSendMock = jest.spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({}); 
+      const dynamoSendMock = jest
+        .spyOn(service['docClient'] as any, 'send')
+        .mockResolvedValueOnce({});
 
       const result = await service.signUp(mockDto);
 
@@ -74,17 +77,25 @@ describe('SignupService', () => {
 
     it('debería lanzar InternalServerErrorException si ocurre un error en AWS', async () => {
       // Aquí también aplicamos el cast al cliente
-      jest.spyOn(service['cognitoClient'] as any, 'send').mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
+      jest
+        .spyOn(service['cognitoClient'] as any, 'send')
+        .mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
 
-      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.signUp(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
 
     it('debería lanzar InternalServerErrorException si ocurre un error en AWS', async () => {
       // Simulamos que Cognito falla y lanza un error
-      jest.spyOn(service['cognitoClient'] as any, 'send').mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
+      jest
+        .spyOn(service['cognitoClient'] as any, 'send')
+        .mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
 
       // Verificamos que el servicio capture el error y lance nuestra excepción personalizada de Nest
-      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.signUp(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });
