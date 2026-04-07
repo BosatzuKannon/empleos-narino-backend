@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { SignupService } from './services/signup.service';
 import { SigninService } from './services/signin.service';
+import { PasswordRecoveryService } from './services/password-recovery.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -13,12 +14,23 @@ describe('AuthController', () => {
     }),
   };
 
-  // 1. Creamos el mock para el nuevo servicio
   const mockSigninService = {
     signIn: jest.fn().mockResolvedValue({
       statusCode: 200,
       message: 'Inicio de sesión exitoso',
       authenticationResult: { AccessToken: 'mock-jwt-token' },
+    }),
+  };
+
+  // Creamos el mock para el nuevo servicio de recuperación
+  const mockPasswordRecoveryService = {
+    forgotPassword: jest.fn().mockResolvedValue({
+      statusCode: 200,
+      message: 'Código de recuperación de contraseña enviado al email.',
+    }),
+    confirmNewPassword: jest.fn().mockResolvedValue({
+      statusCode: 200,
+      message: 'Contraseña actualizada exitosamente.',
     }),
   };
 
@@ -30,10 +42,14 @@ describe('AuthController', () => {
           provide: SignupService,
           useValue: mockSignupService,
         },
-        // 2. Inyectamos el mock del SigninService en el módulo de pruebas
         {
           provide: SigninService,
           useValue: mockSigninService,
+        },
+        // Inyectamos el nuevo mock
+        {
+          provide: PasswordRecoveryService,
+          useValue: mockPasswordRecoveryService,
         },
       ],
     }).compile();
