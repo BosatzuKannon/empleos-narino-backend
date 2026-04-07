@@ -3,7 +3,7 @@ name: CI Pipeline - NestJS
 on:
   push:
     branches:
-      - main
+      - '**'
   pull_request:
     branches:
       - main
