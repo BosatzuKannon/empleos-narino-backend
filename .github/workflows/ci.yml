@@ -3,10 +3,12 @@ name: CI Pipeline - NestJS
 on:
   push:
     branches:
-      - '**'
+      - main
+      - 'epic/**'
   pull_request:
     branches:
       - main
+      - 'epic/**'
 
 jobs:
   build-and-test:
