@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PasswordRecoveryService } from './password-recovery.service.ts';
+import { PasswordRecoveryService } from './password-recovery.service';
 import { ConfigService } from '@nestjs/config';
 import {
   InternalServerErrorException,
@@ -13,8 +13,8 @@ describe('PasswordRecoveryService', () => {
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          COGNITO_CLIENT_ID: 'test-client-id',
+          SUPABASE_URL: 'https://mock-url.supabase.co',
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
         };
         return config[key];
       }),
@@ -41,9 +41,9 @@ describe('PasswordRecoveryService', () => {
     const mockDto = { email: 'prueba@empleosnarino.com' };
 
     it('debería enviar el código de recuperación exitosamente', async () => {
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+      const supabaseResetMock = jest
+        .spyOn(service['supabaseAdmin'].auth, 'resetPasswordForEmail')
+        .mockResolvedValueOnce({ data: {}, error: null } as any);
 
       const result = await service.forgotPassword(mockDto);
 
@@ -51,17 +51,15 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Código de recuperación de contraseña enviado al email.',
       });
-      expect(cognitoSendMock).toHaveBeenCalledTimes(1);
+      expect(supabaseResetMock).toHaveBeenCalledTimes(1);
     });
 
-    it('debería lanzar InternalServerErrorException en caso de error de AWS', async () => {
+    it('debería lanzar InternalServerErrorException en caso de error de Supabase', async () => {
       jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de red'));
+        .spyOn(service['supabaseAdmin'].auth, 'resetPasswordForEmail')
+        .mockResolvedValueOnce({ data: null, error: { message: 'Failed to send' } } as any);
 
-      await expect(service.forgotPassword(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.forgotPassword(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -73,9 +71,15 @@ describe('PasswordRecoveryService', () => {
     };
 
     it('debería confirmar la nueva contraseña exitosamente', async () => {
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+      // 1. Mock the OTP Verification success
+      const verifyMock = jest
+        .spyOn(service['supabaseAdmin'].auth, 'verifyOtp')
+        .mockResolvedValueOnce({ data: { user: { id: 'mock-user-id' } }, error: null } as any);
+
+      // 2. Mock the Admin Password Update success
+      const updateMock = jest
+        .spyOn(service['supabaseAdmin'].auth.admin, 'updateUserById')
+        .mockResolvedValueOnce({ data: { user: {} }, error: null } as any);
 
       const result = await service.confirmNewPassword(mockDto);
 
@@ -83,32 +87,19 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Contraseña actualizada exitosamente.',
       });
-      expect(cognitoSendMock).toHaveBeenCalledTimes(1);
+      expect(verifyMock).toHaveBeenCalledTimes(1);
+      expect(updateMock).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar BadRequestException si el código es incorrecto', async () => {
-      const error = new Error(
-        'Invalid code provided, please request a code again.',
-      );
-      error.name = 'CodeMismatchException';
-
       jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(error);
+        .spyOn(service['supabaseAdmin'].auth, 'verifyOtp')
+        .mockResolvedValueOnce({
+          data: { user: null },
+          error: { message: 'Token has expired or is invalid' },
+        } as any);
 
-      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('debería lanzar InternalServerErrorException para errores generales de AWS', async () => {
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Error inesperado'));
-
-      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(BadRequestException);
     });
   });
 });
