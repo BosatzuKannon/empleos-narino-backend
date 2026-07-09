@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { SignupService } from './services/signup.service';
-import { SigninService } from './services/signin.service.ts';
-import { PasswordRecoveryService } from './services/password-recovery.service.ts';
+import { SigninService } from './services/signin.service';
+import { PasswordRecoveryService } from './services/password-recovery.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
