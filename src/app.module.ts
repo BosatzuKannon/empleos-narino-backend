@@ -10,10 +10,7 @@ import { OffersModule } from './offers/offers.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    AuthModule,
-    ProfileModule,
-    SettingsModule,
-    OffersModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,38 +1,27 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { SignUpDto } from '../dto/signup.dto';
-import {
-  CognitoIdentityProviderClient,
-  SignUpCommand,
-  AdminConfirmSignUpCommand,
-  AdminUpdateUserAttributesCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { ConfigService } from '@nestjs/config';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { PrismaService } from '../../prisma.service'; 
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class SignupService {
-  private cognitoClient: CognitoIdentityProviderClient;
-  private docClient: DynamoDBDocumentClient;
-  private readonly TABLE_NAME: string;
-  private readonly CLIENT_ID: string;
-  private readonly USER_POOL_ID: string;
+  private supabaseAdmin: SupabaseClient;
 
-  constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
+    const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
+    const supabaseServiceKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    this.TABLE_NAME = this.configService.getOrThrow<string>(
-      'DYNAMODB_TABLE_NAME',
-    );
-    this.CLIENT_ID = this.configService.getOrThrow<string>('COGNITO_CLIENT_ID');
-    this.USER_POOL_ID = this.configService.getOrThrow<string>(
-      'COGNITO_USER_POOL_ID',
-    );
-
-    this.cognitoClient = new CognitoIdentityProviderClient({ region });
-    this.docClient = DynamoDBDocumentClient.from(
-      new DynamoDBClient({ region }),
-    );
+    this.supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
   }
 
   async signUp(signUpDto: SignUpDto) {
@@ -49,74 +38,58 @@ export class SignupService {
     } = signUpDto;
 
     try {
-      const cognitoParams = {
-        ClientId: this.CLIENT_ID,
-        Username: email,
-        Password: password,
-        UserAttributes: [
-          { Name: 'email', Value: email },
-          { Name: 'given_name', Value: nombres },
-          { Name: 'family_name', Value: apellidos },
-          { Name: 'phone_number', Value: telefono },
-          { Name: 'custom:user_type', Value: user_type },
-        ],
-      };
-
-      const signUpResponse = await this.cognitoClient.send(
-        new SignUpCommand(cognitoParams),
-      );
-      const cognito_id = signUpResponse.UserSub;
-
-      await this.cognitoClient.send(
-        new AdminConfirmSignUpCommand({
-          UserPoolId: this.USER_POOL_ID,
-          Username: email,
-        }),
-      );
-
-      await this.cognitoClient.send(
-        new AdminUpdateUserAttributesCommand({
-          UserPoolId: this.USER_POOL_ID,
-          Username: email,
-          UserAttributes: [{ Name: 'email_verified', Value: 'true' }],
-        }),
-      );
-
-      const userItem = {
-        pk: `USER#${cognito_id || email}`,
-        sk: 'METADATA',
-        cognito_id: cognito_id || email,
+      // 1. Create and auto-confirm user in Supabase Auth Cloud
+      const { data: authData, error: authError } = await this.supabaseAdmin.auth.admin.createUser({
         email,
-        nombres,
-        apellidos,
-        telefono,
-        user_type,
-        fecha_nacimiento,
-        ciudad,
-        nombre_empresa,
-        created_at: new Date().toISOString(),
-      };
+        password,
+        email_confirm: true, // Instantly verifies email
+        user_metadata: { firstName: nombres, lastName: apellidos },
+      });
 
-      await this.docClient.send(
-        new PutCommand({
-          TableName: this.TABLE_NAME,
-          Item: userItem,
-        }),
-      );
+      if (authError || !authData.user) {
+        console.log('Supabase Rejection:', authError); 
+  throw new BadRequestException(authError?.message || 'Error creating auth user.');
+      }
+
+      const supabaseUid = authData.user.id;
+
+      // 2. Map frontend role to our explicit database UserRole enum
+      const finalRole = user_type === 'COMPANY_ADMIN' ? UserRole.COMPANY_ADMIN : UserRole.CANDIDATE;
+
+      // 3. Complete the rich user profile via Prisma
+      // Note: The database trigger created the baseline row, so we update the extended fields here.
+      await this.prisma.user.update({
+        where: { id: supabaseUid },
+        data: {
+          lastName: apellidos,
+          phone: telefono,
+          city: ciudad,
+          birthDate: fecha_nacimiento ? new Date(fecha_nacimiento) : null,
+          role: finalRole,
+        },
+      });
+
+      // 4. Conditional Entity Creation: If they are a company owner, create their Company record
+      if (finalRole === UserRole.COMPANY_ADMIN && nombre_empresa) {
+        await this.prisma.company.create({
+          data: {
+            name: nombre_empresa,
+            ownerId: supabaseUid,
+          },
+        });
+      }
 
       return {
-        statusCode: 200,
-        message: 'Registro exitoso. El usuario puede iniciar sesión.',
+        statusCode: 201,
+        message: 'Registro exitoso. El usuario puede iniciar sesión inmediatamente.',
+        userId: supabaseUid,
       };
     } catch (error) {
       console.error('Error durante el registro del usuario:', error);
-
-      // Verificamos si es un Error estándar para extraer el mensaje de forma segura
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido de AWS';
-
+      
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Supabase/Prisma';
       throw new InternalServerErrorException({
-        message: 'Error al registrar el usuario.',
+        message: 'Error al registrar el usuario en la nueva infraestructura.',
         error: errorMessage,
       });
     }

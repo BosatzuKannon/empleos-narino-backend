@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------------
+// ENUMS (Standardizing our status and types)
+// -----------------------------------------------------------------------------
+
+enum UserRole {
+  CANDIDATE
+  COMPANY_ADMIN
+  SUPER_ADMIN
+}
+
+enum EntityStatus {
+  DRAFT
+  PENDING_PAYMENT
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+enum ApplicationStatus {
+  SENT
+  REVIEWED
+  INTERVIEWING
+  REJECTED
+  HIRED
+}
+
+enum TransactionType {
+  PAY_PER_POST        
+  SUBSCRIPTION        
+  USER_SERVICE_POST   
+}
+
+enum TransactionStatus {
+  PENDING
+  APPROVED  
+  DECLINED  
+  REFUNDED
+}
+
+// -----------------------------------------------------------------------------
+// MODELS
+// -----------------------------------------------------------------------------
+
+model User {
+  id               String   @id @db.Uuid 
+  email            String   @unique
+  firstName        String
+  lastName         String?
+  phone            String?
+  role             UserRole @default(CANDIDATE)
+  city             String?
+  birthDate        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  devices          Device[]
+  companies        Company[]
+  applications     Application[]
+  transactions     Transaction[]
+  serviceOfferings ServiceOffering[] 
+}
+
+model Company {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  taxId          String?  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ownerId        String   @db.Uuid
+  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  jobs           JobVacancy[]
+  subscriptions  Subscription[]
+}
+
+model JobVacancy {
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String
+  description    String
+  salary         Decimal?     @db.Decimal(10, 2)
+  status         EntityStatus @default(DRAFT)
+  expiresAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  companyId      String       @db.Uuid
+  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  applications   Application[]
+  transactions   Transaction[] 
+}
+
+model Application {
+  id             String            @id @default(uuid()) @db.Uuid
+  status         ApplicationStatus @default(SENT)
+  appliedAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  userId         String     @db.Uuid
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId          String     @db.Uuid
+  jobVacancy     JobVacancy @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId]) 
+}
+
+// -----------------------------------------------------------------------------
+// MONETIZATION & BILLING 
+// -----------------------------------------------------------------------------
+
+model Subscription {
+  id               String       @id @default(uuid()) @db.Uuid
+  status           EntityStatus @default(ACTIVE)
+  currentPeriodEnd DateTime
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  companyId        String       @db.Uuid
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  transactions     Transaction[]
+}
+
+model Transaction {
+  id               String            @id @default(uuid()) @db.Uuid
+  wompiReference   String            @unique 
+  wompiId          String?           @unique 
+  amount           Decimal           @db.Decimal(10, 2)
+  status           TransactionStatus @default(PENDING)
+  type             TransactionType
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  userId           String   @db.Uuid
+  user             User     @relation(fields: [userId], references: [id])
+
+  jobId            String?  @db.Uuid
+  jobVacancy       JobVacancy?      @relation(fields: [jobId], references: [id])
+  
+  subscriptionId   String?  @db.Uuid
+  subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])
+  
+  serviceId        String?  @db.Uuid
+  serviceOffering  ServiceOffering? @relation(fields: [serviceId], references: [id])
+}
+
+// -----------------------------------------------------------------------------
+// FUTURE FEATURE: USER SERVICES
+// -----------------------------------------------------------------------------
+
+model ServiceOffering {
+  id             String       @id @default(uuid()) @db.Uuid
+  title          String
+  description    String
+  price          Decimal?     @db.Decimal(10, 2)
+  status         EntityStatus @default(DRAFT)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  userId         String       @db.Uuid
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  transactions   Transaction[] 
+}
+
+// -----------------------------------------------------------------------------
+// FUTURE FEATURE: PUSH NOTIFICATIONS
+// -----------------------------------------------------------------------------
+
+model Device {
+  id        String   @id @default(uuid()) @db.Uuid
+  pushToken String   @unique // The unique token generated by FCM / Expo
+  platform  String   // 'IOS', 'ANDROID', or 'WEB'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId]) // Makes querying tokens for a specific user blazing fast
+}
