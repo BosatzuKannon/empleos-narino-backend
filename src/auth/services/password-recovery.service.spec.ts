@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { PasswordRecoveryService } from './password-recovery.service.ts.disabled';
+import { PasswordRecoveryService } from './password-recovery.service.ts';
 import { ConfigService } from '@nestjs/config';
 import {
   InternalServerErrorException,
