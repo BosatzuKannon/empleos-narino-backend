@@ -11,7 +11,8 @@ import { OffersModule } from './offers/offers.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
-    ProfileModule
+    ProfileModule,
+    SettingsModule
   ],
   controllers: [AppController],
   providers: [AppService],
