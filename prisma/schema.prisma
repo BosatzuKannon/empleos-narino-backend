@@ -98,6 +98,10 @@ model JobVacancy {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  location     String?
+  contractType String?
+  requirements String?
+
   companyId      String       @db.Uuid
   company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

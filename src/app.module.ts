@@ -12,7 +12,8 @@ import { OffersModule } from './offers/offers.module';
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     ProfileModule,
-    SettingsModule
+    SettingsModule,
+    OffersModule
   ],
   controllers: [AppController],
   providers: [AppService],

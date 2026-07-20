@@ -1,9 +1,9 @@
 import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
-// import { CreateOfferService } from './services/create-offer.service';
+import { CreateOfferService } from './services/create-offer.service';
 // import { GetActiveOffersService } from './services/get-active-offers.service';
-// import { GetOffersByUserService } from './services/get-offers-by-user.service';
+import { GetOffersByUserService } from './services/get-offers-by-user.service';
 // import { UpdateOfferStatusService } from './services/update-offer-status.service';
-// import { GeneratePresignedUrlService } from './services/generate-presigned-url.service';
+import { GeneratePresignedUrlService } from './services/generate-presigned-url.service';
 // import { ApplyToJobService } from './services/apply-to-job.service';
 // import { GetUserApplicationsService } from './services/get-user-applications.service';
 // import { GetOfferApplicationsService } from './services/get-offer-applications.service';
@@ -18,11 +18,11 @@ import { UpdateApplicationStatusDto } from './dto/update-application-status.dto'
 @Controller('offers')
 export class OffersController {
   constructor(
-    // private readonly createOfferService: CreateOfferService,
+    private readonly createOfferService: CreateOfferService,
     // private readonly getActiveOffersService: GetActiveOffersService,
-    // private readonly getOffersByUserService: GetOffersByUserService,
+    private readonly getOffersByUserService: GetOffersByUserService,
     // private readonly updateOfferStatusService: UpdateOfferStatusService,
-    // private readonly generatePresignedUrlService: GeneratePresignedUrlService,
+    private readonly generatePresignedUrlService: GeneratePresignedUrlService,
     // private readonly applyToJobService: ApplyToJobService,
     // private readonly getUserApplicationsService: GetUserApplicationsService,
     // private readonly getOfferApplicationsService: GetOfferApplicationsService,
@@ -34,7 +34,7 @@ export class OffersController {
     @Param('cognito_id') cognitoId: string,
     @Body() createOfferDto: CreateOfferDto,
   ) {
-    // return this.createOfferService.createOffer(cognitoId, createOfferDto);
+    return this.createOfferService.createOffer(cognitoId, createOfferDto);
   }
 
   @Get('getActiveOffers')
@@ -44,7 +44,7 @@ export class OffersController {
 
   @Get('getOffersByUser/:cognito_id')
   async getOffersByUser(@Param('cognito_id') cognitoId: string) {
-    // return this.getOffersByUserService.getOffersByUser(cognitoId);
+    return this.getOffersByUserService.getOffersByUser(cognitoId);
   }
 
   @Put('updateOfferStatus/:offer_id/:updated_by')
@@ -62,7 +62,7 @@ export class OffersController {
 
   @Post('generatePresignedUrl')
   async generatePresignedUrl(@Body() dto: GeneratePresignedUrlDto) {
-    // return this.generatePresignedUrlService.generatePresignedUrl(dto);
+    return this.generatePresignedUrlService.generatePresignedUrl(dto);
   }
 
   @Post('applyToJob/:cognito_id')

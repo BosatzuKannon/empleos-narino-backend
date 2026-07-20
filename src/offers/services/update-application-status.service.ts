@@ -1,21 +1,18 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { PrismaService } from '../../prisma.service';
 import * as sgMail from '@sendgrid/mail';
 import { UpdateApplicationStatusDto } from '../dto/update-application-status.dto';
+import { ApplicationStatus } from '@prisma/client';
 
 @Injectable()
 export class UpdateApplicationStatusService {
-  private docClient: DynamoDBDocumentClient;
-  private readonly TABLE_NAME: string;
   private readonly SENDER_EMAIL: string;
 
-  constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
-    this.TABLE_NAME = this.configService.getOrThrow<string>(
-      'DYNAMODB_TABLE_NAME',
-    );
+  constructor(
+    private configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.SENDER_EMAIL = this.configService.getOrThrow<string>(
       'SENDGRID_SENDER_EMAIL',
     );
@@ -23,45 +20,36 @@ export class UpdateApplicationStatusService {
     const sendgridApiKey =
       this.configService.getOrThrow<string>('SENDGRID_API_KEY');
     sgMail.setApiKey(sendgridApiKey);
-
-    const ddbClient = new DynamoDBClient({ region });
-    this.docClient = DynamoDBDocumentClient.from(ddbClient);
   }
 
   async updateApplicationStatus(
-    cognitoId: string,
+    userId: string,
     offerId: string,
     dto: UpdateApplicationStatusDto,
   ) {
     const { status, candidateEmail, offerTitle } = dto;
+    // Note: status should now be of type ApplicationStatus
 
     try {
-      const command = new UpdateCommand({
-        TableName: this.TABLE_NAME,
-        Key: {
-          pk: `USER#${cognitoId}`,
-          sk: `APPLICATION#${offerId}`,
+      const updatedApplication = await this.prisma.application.update({
+        where: {
+          userId_jobId: {
+            userId: userId,
+            jobId: offerId,
+          },
         },
-        UpdateExpression: 'set #status = :s, updated_at = :u',
-        ExpressionAttributeNames: {
-          '#status': 'status', // 'status' es palabra reservada en Dynamo, usamos alias
+        data: {
+          status: status as ApplicationStatus,
         },
-        ExpressionAttributeValues: {
-          ':s': status,
-          ':u': new Date().toISOString(),
-        },
-        ReturnValues: 'UPDATED_NEW',
       });
 
-      await this.docClient.send(command);
-
       // Enviamos correo informativo al candidato si el estado es relevante
-      await this.sendStatusEmail(candidateEmail, offerTitle, status);
+      await this.sendStatusEmail(candidateEmail, offerTitle, status as ApplicationStatus);
 
       return {
         statusCode: 200,
         message: 'Estado de postulación actualizado.',
-        new_status: status,
+        new_status: updatedApplication.status,
       };
     } catch (error) {
       console.error('Error al actualizar el estado de la postulación:', error);
@@ -74,30 +62,30 @@ export class UpdateApplicationStatusService {
   private async sendStatusEmail(
     to: string,
     offerTitle: string,
-    status: string,
+    status: ApplicationStatus,
   ) {
     let subject = '';
     let htmlContent = '';
 
     switch (status) {
-      case 'en_revision':
+      case ApplicationStatus.REVIEWED:
         subject = `👀 Tu postulación para "${offerTitle}" está en revisión`;
         htmlContent = `<p>Hola, la empresa ha comenzado a revisar tu hoja de vida para la vacante de <strong>${offerTitle}</strong>. ¡Mucho éxito!</p>`;
         break;
-      case 'entrevista':
+      case ApplicationStatus.INTERVIEWING:
         subject = `🎉 ¡Buenas noticias! Has avanzado a la fase de entrevista para "${offerTitle}"`;
         htmlContent = `<p>Felicidades, tu perfil ha destacado. Pronto la empresa se pondrá en contacto contigo para los siguientes pasos.</p>`;
         break;
-      case 'rechazada':
+      case ApplicationStatus.REJECTED:
         subject = `Actualización de tu postulación para "${offerTitle}"`;
         htmlContent = `<p>Hola, agradecemos tu interés. En esta ocasión la empresa ha decidido continuar con otros candidatos. ¡No te desanimes y sigue postulándote!</p>`;
         break;
-      case 'seleccionado':
+      case ApplicationStatus.HIRED:
         subject = `🏆 ¡Felicidades! Has sido seleccionado para "${offerTitle}"`;
         htmlContent = `<p>¡Enhorabuena! Has sido elegido para la vacante. Revisa tu correo o teléfono, te contactarán pronto.</p>`;
         break;
       default:
-        return; // No enviamos correo para 'enviada' u otros no contemplados
+        return; 
     }
 
     try {
@@ -109,7 +97,6 @@ export class UpdateApplicationStatusService {
       });
     } catch (error) {
       console.error('Error enviando correo de SendGrid:', error);
-      // No lanzamos excepción para no bloquear la app
     }
   }
 }

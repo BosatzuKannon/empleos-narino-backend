@@ -1,24 +1,46 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
-import { CheckAppVersionService } from './services/check-app-version.service';
+import { Controller, Post, Get, Body, Headers, UnauthorizedException } from '@nestjs/common';
 import { RegisterPushTokenService } from './services/register-push-token.service';
+import { CheckAppVersionService } from './services/check-app-version.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 
 @Controller('settings')
 export class SettingsController {
   constructor(
-    private readonly checkAppVersionService: CheckAppVersionService,
     private readonly registerPushTokenService: RegisterPushTokenService,
+    private readonly checkAppVersionService: CheckAppVersionService,
   ) {}
 
-  @Get('checkAppVersion')
+  @Get('app-version')
   async checkAppVersion() {
     return this.checkAppVersionService.checkAppVersion();
   }
 
-  @Post('registerPushToken')
-  async registerPushToken(@Body() registerPushTokenDto: RegisterPushTokenDto) {
-    return this.registerPushTokenService.registerPushToken(
-      registerPushTokenDto,
-    );
+  @Post('push-token')
+  async registerPushToken(
+    @Headers('authorization') authHeader: string,
+    @Body() registerPushTokenDto: RegisterPushTokenDto,
+  ) {
+    // 1. Verify token exists
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Token de autorización inválido.');
+    }
+
+    try {
+      // 2. Extract the user ID directly from the Supabase JWT
+      const token = authHeader.split(' ')[1];
+      const payloadBase64 = token.split('.')[1];
+      const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+      const userId = payload.sub;
+
+      if (!userId) {
+        throw new UnauthorizedException('El token no contiene un ID válido.');
+      }
+
+      // 3. Pass BOTH arguments to the service, fixing the TS2554 error!
+      return this.registerPushTokenService.registerPushToken(userId, registerPushTokenDto);
+      
+    } catch (error) {
+      throw new UnauthorizedException('Token inválido o expirado.');
+    }
   }
 }
