@@ -7,10 +7,27 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
+jest.mock('@supabase/supabase-js', () => {
+  const mockSignInWithPassword = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        signInWithPassword: mockSignInWithPassword,
+      },
+    })),
+    __mockSignInWithPassword: mockSignInWithPassword,
+  };
+});
+
 describe('SigninService', () => {
   let service: SigninService;
+  let mockSignInWithPassword: jest.Mock;
 
   beforeEach(async () => {
+    const supabaseModule = require('@supabase/supabase-js');
+    mockSignInWithPassword = supabaseModule.__mockSignInWithPassword;
+    mockSignInWithPassword.mockReset();
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
@@ -24,10 +41,7 @@ describe('SigninService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SigninService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -45,20 +59,17 @@ describe('SigninService', () => {
     };
 
     it('debería iniciar sesión exitosamente y devolver el token', async () => {
-      // Mock successful Supabase authentication
-      const supabaseSignInMock = jest
-        .spyOn(service['supabase'].auth, 'signInWithPassword')
-        .mockResolvedValueOnce({
-          data: {
-            session: {
-              access_token: 'mock-jwt-token',
-              refresh_token: 'mock-refresh-token',
-              expires_in: 3600,
-              token_type: 'bearer',
-            },
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: {
+          session: {
+            access_token: 'mock-jwt-token',
+            refresh_token: 'mock-refresh-token',
+            expires_in: 3600,
+            token_type: 'bearer',
           },
-          error: null,
-        } as any);
+        },
+        error: null,
+      });
 
       const result = await service.signIn(mockDto);
 
@@ -72,31 +83,29 @@ describe('SigninService', () => {
           TokenType: 'bearer',
         },
       });
-      expect(supabaseSignInMock).toHaveBeenCalledTimes(1);
+      expect(mockSignInWithPassword).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar UnauthorizedException si las credenciales son incorrectas', async () => {
-      jest.spyOn(service['supabase'].auth, 'signInWithPassword').mockResolvedValueOnce({
+      mockSignInWithPassword.mockResolvedValueOnce({
         data: { session: null, user: null },
         error: { message: 'Invalid login credentials' },
-      } as any);
+      });
 
       await expect(service.signIn(mockDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('debería lanzar ForbiddenException si el correo no está confirmado', async () => {
-      jest.spyOn(service['supabase'].auth, 'signInWithPassword').mockResolvedValueOnce({
+      mockSignInWithPassword.mockResolvedValueOnce({
         data: { session: null, user: null },
         error: { message: 'Email not confirmed' },
-      } as any);
+      });
 
       await expect(service.signIn(mockDto)).rejects.toThrow(ForbiddenException);
     });
 
     it('debería lanzar InternalServerErrorException para errores generales', async () => {
-      jest.spyOn(service['supabase'].auth, 'signInWithPassword').mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      mockSignInWithPassword.mockRejectedValueOnce(new Error('Network error'));
 
       await expect(service.signIn(mockDto)).rejects.toThrow(InternalServerErrorException);
     });

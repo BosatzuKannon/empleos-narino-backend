@@ -1,20 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetOffersByUserService } from './get-offers-by-user.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
 
 describe('GetOffersByUserService', () => {
   let service: GetOffersByUserService;
+  let prismaMock: { jobVacancy: { findMany: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn().mockReturnValue('dummy-value'),
+    prismaMock = {
+      jobVacancy: {
+        findMany: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GetOffersByUserService,
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -22,23 +25,23 @@ describe('GetOffersByUserService', () => {
   });
 
   it('debería obtener ofertas de un usuario', async () => {
-    const mockItems = [{ offer_id: '1', createdBy: 'USER#123' }];
-    const dynamoSendMock = jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockResolvedValueOnce({ Items: mockItems, Count: 1 });
+    const mockOffers = [{ id: '1', companyId: 'USER#123', title: 'Dev' }];
+    prismaMock.jobVacancy.findMany.mockResolvedValueOnce(mockOffers);
 
-    const result = await service.getOffersByUser('123');
+    const result = await service.getOffersByUser('USER#123');
 
     expect(result.statusCode).toBe(200);
     expect(result.count).toBe(1);
-    expect(result.data).toEqual(mockItems);
-    expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+    expect(result.data).toEqual(mockOffers);
+    expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledWith({
+      where: { companyId: 'USER#123' },
+      orderBy: { createdAt: 'desc' },
+    });
   });
 
-  it('debería manejar error de DynamoDB', async () => {
-    jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockRejectedValueOnce(new Error('Error'));
+  it('debería manejar error de Prisma', async () => {
+    prismaMock.jobVacancy.findMany.mockRejectedValueOnce(new Error('Error'));
     await expect(service.getOffersByUser('123')).rejects.toThrow(
       InternalServerErrorException,
     );

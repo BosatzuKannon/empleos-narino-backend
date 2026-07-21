@@ -2,18 +2,50 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GeneratePresignedUrlService } from './generate-presigned-url.service';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-jest.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: jest.fn().mockResolvedValue('https://signed-test-url.com'),
-}));
+jest.mock('@supabase/supabase-js', () => {
+  const mockCreateSignedUploadUrl = jest.fn().mockResolvedValue({
+    data: { signedUrl: 'https://signed-test-url.com', path: 'offers/images/test.jpg' },
+    error: null,
+  });
+
+  return {
+    createClient: jest.fn(() => ({
+      storage: {
+        from: jest.fn().mockReturnValue({
+          createSignedUploadUrl: mockCreateSignedUploadUrl,
+        }),
+      },
+    })),
+    __mockCreateSignedUploadUrl: mockCreateSignedUploadUrl,
+  };
+});
 
 describe('GeneratePresignedUrlService', () => {
   let service: GeneratePresignedUrlService;
+  let mockCreateSignedUploadUrl: jest.Mock;
 
   beforeEach(async () => {
+    const supabaseModule = require('@supabase/supabase-js');
+    mockCreateSignedUploadUrl = supabaseModule.__mockCreateSignedUploadUrl;
+    mockCreateSignedUploadUrl.mockResolvedValue({
+      data: { signedUrl: 'https://signed-test-url.com', path: 'offers/images/test.jpg' },
+      error: null,
+    });
+
     const mockConfigService = {
-      getOrThrow: jest.fn().mockReturnValue('dummy-value'),
+      getOrThrow: jest.fn((key: string) => {
+        const config: Record<string, string> = {
+          SUPABASE_URL: 'https://mock-url.supabase.co',
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
+          SUPABASE_STORAGE_BUCKET: 'mock-bucket',
+        };
+        return config[key];
+      }),
+      get: jest.fn((key: string) => {
+        if (key === 'SUPABASE_URL') return 'https://mock-url.supabase.co';
+        return undefined;
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -38,7 +70,7 @@ describe('GeneratePresignedUrlService', () => {
 
     expect(result.statusCode).toBe(200);
     expect(result.signedUrl).toBe('https://signed-test-url.com');
-    expect(getSignedUrl).toHaveBeenCalledTimes(1);
+    expect(mockCreateSignedUploadUrl).toHaveBeenCalledTimes(1);
   });
 
   it('debería lanzar BadRequestException para categoría inválida', async () => {

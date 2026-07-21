@@ -1,11 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OffersController } from './offers.controller';
-
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-1234'),
-}));
-
-// Importaciones de servicios
 import { CreateOfferService } from './services/create-offer.service';
 import { GetActiveOffersService } from './services/get-active-offers.service';
 import { GetOffersByUserService } from './services/get-offers-by-user.service';
@@ -19,7 +13,6 @@ import { UpdateApplicationStatusService } from './services/update-application-st
 describe('OffersController', () => {
   let controller: OffersController;
 
-  // Creamos mocks básicos para los servicios requeridos
   const mockCreateOfferService = { createOffer: jest.fn() };
   const mockGetActiveOffersService = { getActiveOffers: jest.fn() };
   const mockGetOffersByUserService = { getOffersByUser: jest.fn() };
@@ -37,35 +30,14 @@ describe('OffersController', () => {
       controllers: [OffersController],
       providers: [
         { provide: CreateOfferService, useValue: mockCreateOfferService },
-        {
-          provide: GetActiveOffersService,
-          useValue: mockGetActiveOffersService,
-        },
-        {
-          provide: GetOffersByUserService,
-          useValue: mockGetOffersByUserService,
-        },
-        {
-          provide: UpdateOfferStatusService,
-          useValue: mockUpdateOfferStatusService,
-        },
-        {
-          provide: GeneratePresignedUrlService,
-          useValue: mockGeneratePresignedUrlService,
-        },
+        { provide: GetActiveOffersService, useValue: mockGetActiveOffersService },
+        { provide: GetOffersByUserService, useValue: mockGetOffersByUserService },
+        { provide: UpdateOfferStatusService, useValue: mockUpdateOfferStatusService },
+        { provide: GeneratePresignedUrlService, useValue: mockGeneratePresignedUrlService },
         { provide: ApplyToJobService, useValue: mockApplyToJobService },
-        {
-          provide: GetUserApplicationsService,
-          useValue: mockGetUserApplicationsService,
-        },
-        {
-          provide: GetOfferApplicationsService,
-          useValue: mockGetOfferApplicationsService,
-        },
-        {
-          provide: UpdateApplicationStatusService,
-          useValue: mockUpdateApplicationStatusService,
-        },
+        { provide: GetUserApplicationsService, useValue: mockGetUserApplicationsService },
+        { provide: GetOfferApplicationsService, useValue: mockGetOfferApplicationsService },
+        { provide: UpdateApplicationStatusService, useValue: mockUpdateApplicationStatusService },
       ],
     }).compile();
 

@@ -1,29 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { RegisterPushTokenService } from './register-push-token.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
 
 describe('RegisterPushTokenService', () => {
   let service: RegisterPushTokenService;
+  let prismaMock: { device: { upsert: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn((key: string) => {
-        const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          DYNAMODB_TABLE_NAME: 'job_portal',
-        };
-        return config[key];
-      }),
+    prismaMock = {
+      device: {
+        upsert: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RegisterPushTokenService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -35,35 +29,49 @@ describe('RegisterPushTokenService', () => {
   });
 
   describe('registerPushToken', () => {
+    const userId = '12345';
     const mockDto = {
-      user_id: '12345',
-      platform: 'android',
-      permission_status: 'granted',
       token: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',
+      platform: 'android',
     };
 
     it('debería registrar el push token exitosamente', async () => {
-      const dynamoSendMock = jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+      const mockDevice = { id: 'device-123', pushToken: mockDto.token, platform: 'android' };
+      prismaMock.device.upsert.mockResolvedValueOnce(mockDevice);
 
-      const result = await service.registerPushToken(mockDto);
+      const result = await service.registerPushToken(userId, mockDto);
 
       expect(result).toEqual({
         statusCode: 201,
         message: 'Push Token registrado/actualizado exitosamente.',
-        status: 'granted',
-        token_sk: 'PUSH_TOKEN#android',
+        deviceId: 'device-123',
       });
-      expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.device.upsert).toHaveBeenCalledTimes(1);
+      expect(prismaMock.device.upsert).toHaveBeenCalledWith({
+        where: { pushToken: mockDto.token },
+        update: { userId, platform: 'android', updatedAt: expect.any(Date) },
+        create: {
+          pushToken: mockDto.token,
+          platform: 'android',
+          userId,
+        },
+      });
     });
 
-    it('debería lanzar InternalServerErrorException si DynamoDB falla', async () => {
-      jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de escritura'));
+    it('debería devolver mensaje si no se proporciona token', async () => {
+      const result = await service.registerPushToken(userId, { token: '', platform: 'android' });
 
-      await expect(service.registerPushToken(mockDto)).rejects.toThrow(
+      expect(result).toEqual({
+        statusCode: 200,
+        message: 'No push token provided, skipping registration.',
+      });
+      expect(prismaMock.device.upsert).not.toHaveBeenCalled();
+    });
+
+    it('debería lanzar InternalServerErrorException si Prisma falla', async () => {
+      prismaMock.device.upsert.mockRejectedValueOnce(new Error('Fallo de escritura'));
+
+      await expect(service.registerPushToken(userId, mockDto)).rejects.toThrow(
         InternalServerErrorException,
       );
     });

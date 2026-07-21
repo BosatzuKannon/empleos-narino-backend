@@ -6,10 +6,43 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 
+jest.mock('@supabase/supabase-js', () => {
+  const mockResetPasswordForEmail = jest.fn();
+  const mockVerifyOtp = jest.fn();
+  const mockUpdateUserById = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        resetPasswordForEmail: mockResetPasswordForEmail,
+        verifyOtp: mockVerifyOtp,
+        admin: {
+          updateUserById: mockUpdateUserById,
+        },
+      },
+    })),
+    __mocks: {
+      resetPasswordForEmail: mockResetPasswordForEmail,
+      verifyOtp: mockVerifyOtp,
+      updateUserById: mockUpdateUserById,
+    },
+  };
+});
+
 describe('PasswordRecoveryService', () => {
   let service: PasswordRecoveryService;
+  let mocks: {
+    resetPasswordForEmail: jest.Mock;
+    verifyOtp: jest.Mock;
+    updateUserById: jest.Mock;
+  };
 
   beforeEach(async () => {
+    const supabaseModule = require('@supabase/supabase-js');
+    mocks = supabaseModule.__mocks;
+    mocks.resetPasswordForEmail.mockReset();
+    mocks.verifyOtp.mockReset();
+    mocks.updateUserById.mockReset();
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
@@ -23,10 +56,7 @@ describe('PasswordRecoveryService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PasswordRecoveryService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -41,9 +71,7 @@ describe('PasswordRecoveryService', () => {
     const mockDto = { email: 'prueba@empleosnarino.com' };
 
     it('debería enviar el código de recuperación exitosamente', async () => {
-      const supabaseResetMock = jest
-        .spyOn(service['supabaseAdmin'].auth, 'resetPasswordForEmail')
-        .mockResolvedValueOnce({ data: {}, error: null } as any);
+      mocks.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
 
       const result = await service.forgotPassword(mockDto);
 
@@ -51,13 +79,14 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Código de recuperación de contraseña enviado al email.',
       });
-      expect(supabaseResetMock).toHaveBeenCalledTimes(1);
+      expect(mocks.resetPasswordForEmail).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar InternalServerErrorException en caso de error de Supabase', async () => {
-      jest
-        .spyOn(service['supabaseAdmin'].auth, 'resetPasswordForEmail')
-        .mockResolvedValueOnce({ data: null, error: { message: 'Failed to send' } } as any);
+      mocks.resetPasswordForEmail.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Failed to send' },
+      });
 
       await expect(service.forgotPassword(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
@@ -71,15 +100,11 @@ describe('PasswordRecoveryService', () => {
     };
 
     it('debería confirmar la nueva contraseña exitosamente', async () => {
-      // 1. Mock the OTP Verification success
-      const verifyMock = jest
-        .spyOn(service['supabaseAdmin'].auth, 'verifyOtp')
-        .mockResolvedValueOnce({ data: { user: { id: 'mock-user-id' } }, error: null } as any);
-
-      // 2. Mock the Admin Password Update success
-      const updateMock = jest
-        .spyOn(service['supabaseAdmin'].auth.admin, 'updateUserById')
-        .mockResolvedValueOnce({ data: { user: {} }, error: null } as any);
+      mocks.verifyOtp.mockResolvedValueOnce({
+        data: { user: { id: 'mock-user-id' } },
+        error: null,
+      });
+      mocks.updateUserById.mockResolvedValueOnce({ data: { user: {} }, error: null });
 
       const result = await service.confirmNewPassword(mockDto);
 
@@ -87,17 +112,15 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Contraseña actualizada exitosamente.',
       });
-      expect(verifyMock).toHaveBeenCalledTimes(1);
-      expect(updateMock).toHaveBeenCalledTimes(1);
+      expect(mocks.verifyOtp).toHaveBeenCalledTimes(1);
+      expect(mocks.updateUserById).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar BadRequestException si el código es incorrecto', async () => {
-      jest
-        .spyOn(service['supabaseAdmin'].auth, 'verifyOtp')
-        .mockResolvedValueOnce({
-          data: { user: null },
-          error: { message: 'Token has expired or is invalid' },
-        } as any);
+      mocks.verifyOtp.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Token has expired or is invalid' },
+      });
 
       await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(BadRequestException);
     });

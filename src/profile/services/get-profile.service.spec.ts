@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetProfileService } from './get-profile.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import {
   InternalServerErrorException,
   NotFoundException,
@@ -8,25 +8,19 @@ import {
 
 describe('GetProfileService', () => {
   let service: GetProfileService;
+  let prismaMock: { user: { findUnique: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn((key: string) => {
-        const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          DYNAMODB_TABLE_NAME: 'job_portal',
-        };
-        return config[key];
-      }),
+    prismaMock = {
+      user: {
+        findUnique: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GetProfileService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -38,40 +32,36 @@ describe('GetProfileService', () => {
   });
 
   describe('getProfile', () => {
-    const cognitoId = 'usuario-123';
+    const userId = 'usuario-123';
 
     it('debería obtener el perfil exitosamente', async () => {
-      const mockProfile = { nombres: 'Carlos', apellidos: 'Jaramillo' };
+      const mockProfile = { id: userId, firstName: 'Carlos', lastName: 'Jaramillo' };
+      prismaMock.user.findUnique.mockResolvedValueOnce(mockProfile);
 
-      const dynamoSendMock = jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({ Item: mockProfile });
-
-      const result = await service.getProfile(cognitoId);
+      const result = await service.getProfile(userId);
 
       expect(result).toEqual({
         statusCode: 200,
         profile: mockProfile,
       });
-      expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+      });
     });
 
     it('debería lanzar NotFoundException si no se encuentra el perfil', async () => {
-      jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({ Item: undefined });
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.getProfile(cognitoId)).rejects.toThrow(
+      await expect(service.getProfile(userId)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('debería lanzar InternalServerErrorException en caso de error de AWS', async () => {
-      jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de conexión a DynamoDB'));
+    it('debería lanzar InternalServerErrorException en caso de error de Prisma', async () => {
+      prismaMock.user.findUnique.mockRejectedValueOnce(new Error('Fallo de conexión'));
 
-      await expect(service.getProfile(cognitoId)).rejects.toThrow(
+      await expect(service.getProfile(userId)).rejects.toThrow(
         InternalServerErrorException,
       );
     });

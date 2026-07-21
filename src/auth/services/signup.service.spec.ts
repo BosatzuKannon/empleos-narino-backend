@@ -1,12 +1,41 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SignupService } from './signup.service';
 import { ConfigService } from '@nestjs/config';
-import { InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../../prisma.service';
+import { InternalServerErrorException } from '@nestjs/common';
+
+jest.mock('@supabase/supabase-js', () => {
+  const mockCreateUser = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        admin: {
+          createUser: mockCreateUser,
+        },
+      },
+    })),
+    __mockCreateUser: mockCreateUser,
+  };
+});
 
 describe('SignupService', () => {
   let service: SignupService;
+  let prismaMock: {
+    user: { update: jest.Mock };
+    company: { create: jest.Mock };
+  };
+  let mockCreateUser: jest.Mock;
 
   beforeEach(async () => {
+    const supabaseModule = require('@supabase/supabase-js');
+    mockCreateUser = supabaseModule.__mockCreateUser;
+    mockCreateUser.mockReset();
+
+    prismaMock = {
+      user: { update: jest.fn() },
+      company: { create: jest.fn() },
+    };
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
@@ -20,10 +49,8 @@ describe('SignupService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SignupService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -47,35 +74,29 @@ describe('SignupService', () => {
       nombre_empresa: '',
     };
 
-    it('debería registrar un usuario exitosamente en Supabase', async () => {
-      const supabaseCreateMock = jest
-        .spyOn(service['supabaseAdmin'].auth.admin, 'createUser')
-        .mockResolvedValueOnce({ data: { user: { id: 'mock-id' } }, error: null } as any);
+    it('debería registrar un usuario exitosamente', async () => {
+      mockCreateUser.mockResolvedValueOnce({ data: { user: { id: 'mock-id' } }, error: null });
+      prismaMock.user.update.mockResolvedValueOnce({});
 
       const result = await service.signUp(mockDto);
 
-      expect(result).toEqual({
-        statusCode: 201, // Or 200 depending on what your service returns
-        message: 'Registro exitoso. El usuario puede iniciar sesión.',
+      expect(result.statusCode).toBe(201);
+      expect(result.message).toContain('Registro exitoso');
+      expect(mockCreateUser).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('debería lanzar InternalServerErrorException si el correo ya está registrado', async () => {
+      mockCreateUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'A user with this email address has already been registered' },
       });
-      expect(supabaseCreateMock).toHaveBeenCalledTimes(1);
+
+      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
 
-    it('debería lanzar BadRequestException si el correo ya está registrado', async () => {
-      jest
-        .spyOn(service['supabaseAdmin'].auth.admin, 'createUser')
-        .mockResolvedValueOnce({
-          data: { user: null },
-          error: { message: 'A user with this email address has already been registered' },
-        } as any);
-
-      await expect(service.signUp(mockDto)).rejects.toThrow(BadRequestException);
-    });
-    
     it('debería lanzar InternalServerErrorException si ocurre un error general', async () => {
-      jest
-        .spyOn(service['supabaseAdmin'].auth.admin, 'createUser')
-        .mockRejectedValueOnce(new Error('Fallo de conexión a Supabase'));
+      mockCreateUser.mockRejectedValueOnce(new Error('Fallo de conexión'));
 
       await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
