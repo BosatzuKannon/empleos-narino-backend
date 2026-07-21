@@ -7,16 +7,32 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 
+jest.mock('@supabase/supabase-js', () => {
+  const mockSignInWithPassword = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        signInWithPassword: mockSignInWithPassword,
+      },
+    })),
+    __mockSignInWithPassword: mockSignInWithPassword,
+  };
+});
+
 describe('SigninService', () => {
   let service: SigninService;
+  let mockSignInWithPassword: jest.Mock;
 
   beforeEach(async () => {
-    // Mock del ConfigService con tipado estricto para evitar errores de linter
+    const supabaseModule = require('@supabase/supabase-js');
+    mockSignInWithPassword = supabaseModule.__mockSignInWithPassword;
+    mockSignInWithPassword.mockReset();
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          COGNITO_CLIENT_ID: 'test-client-id',
+          SUPABASE_URL: 'https://mock-url.supabase.co',
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
         };
         return config[key];
       }),
@@ -25,10 +41,7 @@ describe('SigninService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SigninService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -46,60 +59,55 @@ describe('SigninService', () => {
     };
 
     it('debería iniciar sesión exitosamente y devolver el token', async () => {
-      // Mock de una respuesta exitosa de Cognito
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({
-          AuthenticationResult: { AccessToken: 'mock-jwt-token' },
-        });
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: {
+          session: {
+            access_token: 'mock-jwt-token',
+            refresh_token: 'mock-refresh-token',
+            expires_in: 3600,
+            token_type: 'bearer',
+          },
+        },
+        error: null,
+      });
 
       const result = await service.signIn(mockDto);
 
       expect(result).toEqual({
         statusCode: 200,
         message: 'Inicio de sesión exitoso',
-        authenticationResult: { AccessToken: 'mock-jwt-token' },
+        authenticationResult: {
+          AccessToken: 'mock-jwt-token',
+          RefreshToken: 'mock-refresh-token',
+          ExpiresIn: 3600,
+          TokenType: 'bearer',
+        },
       });
-      expect(cognitoSendMock).toHaveBeenCalledTimes(1);
+      expect(mockSignInWithPassword).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar UnauthorizedException si las credenciales son incorrectas', async () => {
-      // Simulamos el error específico NotAuthorizedException
-      const error = new Error('Incorrect username or password.');
-      error.name = 'NotAuthorizedException';
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { session: null, user: null },
+        error: { message: 'Invalid login credentials' },
+      });
 
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(error);
-
-      await expect(service.signIn(mockDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.signIn(mockDto)).rejects.toThrow(UnauthorizedException);
     });
 
-    it('debería lanzar ForbiddenException si el usuario no ha confirmado su correo', async () => {
-      // Simulamos el error específico UserNotConfirmedException
-      const error = new Error('User is not confirmed.');
-      error.name = 'UserNotConfirmedException';
-
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(error);
+    it('debería lanzar ForbiddenException si el correo no está confirmado', async () => {
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { session: null, user: null },
+        error: { message: 'Email not confirmed' },
+      });
 
       await expect(service.signIn(mockDto)).rejects.toThrow(ForbiddenException);
     });
 
-    it('debería lanzar InternalServerErrorException para errores generales de AWS', async () => {
-      // Simulamos un error de red genérico
-      const error = new Error('Error de conexión a internet');
+    it('debería lanzar InternalServerErrorException para errores generales', async () => {
+      mockSignInWithPassword.mockRejectedValueOnce(new Error('Network error'));
 
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(error);
-
-      await expect(service.signIn(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.signIn(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
   });
 });

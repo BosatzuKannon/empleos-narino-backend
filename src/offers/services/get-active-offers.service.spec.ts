@@ -1,20 +1,23 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { GetActiveOffersService } from './get-active-offers.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
 
 describe('GetActiveOffersService', () => {
   let service: GetActiveOffersService;
+  let prismaMock: { jobVacancy: { findMany: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn().mockReturnValue('dummy-value'),
+    prismaMock = {
+      jobVacancy: {
+        findMany: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GetActiveOffersService,
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -22,22 +25,23 @@ describe('GetActiveOffersService', () => {
   });
 
   it('debería obtener ofertas activas', async () => {
-    const mockItems = [{ offer_id: '1', status: 'activa' }];
-    const dynamoSendMock = jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockResolvedValueOnce({ Items: mockItems });
+    const mockOffers = [{ id: '1', title: 'Dev', status: 'ACTIVE' }];
+    prismaMock.jobVacancy.findMany.mockResolvedValueOnce(mockOffers);
 
     const result = await service.getActiveOffers();
 
     expect(result.statusCode).toBe(200);
-    expect(result.offers).toEqual(mockItems);
-    expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+    expect(result.offers).toEqual(mockOffers);
+    expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledWith({
+      where: { status: 'ACTIVE' },
+      orderBy: { createdAt: 'desc' },
+      include: { company: true },
+    });
   });
 
-  it('debería manejar error de DynamoDB', async () => {
-    jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockRejectedValueOnce(new Error('Error'));
+  it('debería manejar error de Prisma', async () => {
+    prismaMock.jobVacancy.findMany.mockRejectedValueOnce(new Error('Error'));
     await expect(service.getActiveOffers()).rejects.toThrow(
       InternalServerErrorException,
     );

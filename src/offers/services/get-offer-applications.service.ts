@@ -1,40 +1,25 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
+import { PrismaService } from '../../prisma.service'; 
 
 @Injectable()
 export class GetOfferApplicationsService {
-  private docClient: DynamoDBDocumentClient;
-  private readonly TABLE_NAME: string;
-
-  constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
-    this.TABLE_NAME = this.configService.getOrThrow<string>(
-      'DYNAMODB_TABLE_NAME',
-    );
-
-    const ddbClient = new DynamoDBClient({ region });
-    this.docClient = DynamoDBDocumentClient.from(ddbClient);
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async getOfferApplications(offerId: string) {
     try {
-      const command = new ScanCommand({
-        TableName: this.TABLE_NAME,
-        FilterExpression: 'entity_type = :entityType AND offer_id = :offerId',
-        ExpressionAttributeValues: {
-          ':entityType': 'APPLICATION',
-          ':offerId': offerId,
+      const applications = await this.prisma.application.findMany({
+        where: {
+          jobId: offerId,
         },
+        include: {
+          user: true, // Includes the candidate's profile data
+        }
       });
-
-      const result = await this.docClient.send(command);
 
       return {
         statusCode: 200,
-        count: result.Count || 0,
-        candidates: result.Items || [],
+        count: applications.length,
+        candidates: applications,
       };
     } catch (error) {
       console.error('Error al obtener candidatos de la oferta:', error);

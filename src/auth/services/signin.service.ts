@@ -6,72 +6,82 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SignInDto } from '../dto/signin.dto';
-import {
-  CognitoIdentityProviderClient,
-  InitiateAuthCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SigninService {
-  private cognitoClient: CognitoIdentityProviderClient;
-  private readonly CLIENT_ID: string;
+  private supabase: SupabaseClient;
 
   constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
-    this.CLIENT_ID = this.configService.getOrThrow<string>('COGNITO_CLIENT_ID');
+    const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
+    const supabaseKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
 
-    this.cognitoClient = new CognitoIdentityProviderClient({ region });
+    // Initialize the Supabase client specifically for server-side auth
+    this.supabase = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
   }
 
   async signIn(signInDto: SignInDto) {
+    // We continue using 'username' from the DTO to represent the email
     const { username, password } = signInDto;
 
     try {
-      const command = new InitiateAuthCommand({
-        ClientId: this.CLIENT_ID,
-        AuthFlow: 'USER_PASSWORD_AUTH',
-        AuthParameters: {
-          USERNAME: username,
-          PASSWORD: password,
-        },
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email: username,
+        password: password,
       });
 
-      const result = await this.cognitoClient.send(command);
-
-      return {
-        statusCode: 200,
-        message: 'Inicio de sesión exitoso',
-        authenticationResult: result.AuthenticationResult,
-      };
-    } catch (error) {
-      // <-- Ya no usamos ': any'
-      console.error('Error durante el inicio de sesión:', error);
-
-      // Le demostramos a TypeScript que este error es un objeto Error real
-      if (error instanceof Error) {
-        if (
-          error.name === 'NotAuthorizedException' ||
-          error.name === 'UserNotFoundException'
-        ) {
+      if (error) {
+        // Map Supabase errors to the old Cognito exception handling flow
+        if (error.message.includes('Invalid login credentials')) {
           throw new UnauthorizedException({
             message: 'Nombre de usuario o contraseña incorrectos.',
             error: error.message,
           });
         }
 
-        if (error.name === 'UserNotConfirmedException') {
+        if (error.message.includes('Email not confirmed')) {
           throw new ForbiddenException({
-            message:
-              'El usuario no ha sido confirmado. Por favor, confirme su cuenta.',
+            message: 'El usuario no ha sido confirmado. Por favor, confirme su cuenta.',
             error: error.message,
           });
         }
+
+        throw new InternalServerErrorException({
+          message: 'Error en la autenticación.',
+          error: error.message,
+        });
       }
 
-      // Fallback seguro si por alguna razón falla algo que no sea una instancia de Error
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido de AWS';
+      // Format the Supabase session to perfectly match the legacy AWS Cognito structure
+      // This prevents you from having to rewrite frontend token parsing logic!
+      return {
+        statusCode: 200,
+        message: 'Inicio de sesión exitoso',
+        authenticationResult: {
+          AccessToken: data.session.access_token,
+          RefreshToken: data.session.refresh_token,
+          ExpiresIn: data.session.expires_in,
+          TokenType: data.session.token_type,
+        },
+      };
+    } catch (error) {
+      console.error('Error durante el inicio de sesión:', error);
 
+      // Pass through our custom HTTP exceptions
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof ForbiddenException ||
+        error instanceof InternalServerErrorException
+      ) {
+        throw error;
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Supabase';
       throw new InternalServerErrorException({
         message: 'Error al iniciar sesión.',
         error: errorMessage,

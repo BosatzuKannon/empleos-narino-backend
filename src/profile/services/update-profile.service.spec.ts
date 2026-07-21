@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UpdateProfileService } from './update-profile.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import {
   InternalServerErrorException,
   NotFoundException,
@@ -8,25 +8,20 @@ import {
 
 describe('UpdateProfileService', () => {
   let service: UpdateProfileService;
+  let prismaMock: { user: { findUnique: jest.Mock; update: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn((key: string) => {
-        const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          DYNAMODB_TABLE_NAME: 'job_portal',
-        };
-        return config[key];
-      }),
+    prismaMock = {
+      user: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UpdateProfileService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -38,7 +33,7 @@ describe('UpdateProfileService', () => {
   });
 
   describe('updateProfile', () => {
-    const cognitoId = 'usuario-123';
+    const userId = 'usuario-123';
     const mockDto = {
       nombres: 'Carlos',
       apellidos: 'Jaramillo',
@@ -47,41 +42,41 @@ describe('UpdateProfileService', () => {
     };
 
     it('debería actualizar el perfil exitosamente', async () => {
-      const mockUpdatedAttributes = {
-        ...mockDto,
-        fecha_nacimiento: '1988-05-15',
+      const mockExistingUser = { id: userId, firstName: 'Old' };
+      prismaMock.user.findUnique.mockResolvedValueOnce(mockExistingUser);
+
+      const mockUpdatedUser = {
+        id: userId,
+        firstName: 'Carlos',
+        lastName: 'Jaramillo',
+        phone: '3001234567',
+        city: 'Pasto',
       };
+      prismaMock.user.update.mockResolvedValueOnce(mockUpdatedUser);
 
-      const dynamoSendMock = jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({ Attributes: mockUpdatedAttributes });
-
-      const result = await service.updateProfile(cognitoId, mockDto);
+      const result = await service.updateProfile(userId, mockDto);
 
       expect(result).toEqual({
         statusCode: 200,
         message: 'Perfil de usuario actualizado exitosamente.',
-        updatedAttributes: mockUpdatedAttributes,
+        updatedAttributes: mockUpdatedUser,
       });
-      expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
     });
 
-    it('debería lanzar NotFoundException si no se encuentran atributos (usuario no existe)', async () => {
-      jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({ Attributes: undefined });
+    it('debería lanzar NotFoundException si el usuario no existe', async () => {
+      prismaMock.user.findUnique.mockResolvedValueOnce(null);
 
-      await expect(service.updateProfile(cognitoId, mockDto)).rejects.toThrow(
+      await expect(service.updateProfile(userId, mockDto)).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it('debería lanzar InternalServerErrorException en caso de error de AWS', async () => {
-      jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de conexión a DynamoDB'));
+    it('debería lanzar InternalServerErrorException en caso de error de Prisma', async () => {
+      prismaMock.user.findUnique.mockRejectedValueOnce(new Error('Fallo de conexión'));
 
-      await expect(service.updateProfile(cognitoId, mockDto)).rejects.toThrow(
+      await expect(service.updateProfile(userId, mockDto)).rejects.toThrow(
         InternalServerErrorException,
       );
     });

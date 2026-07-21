@@ -9,10 +9,12 @@ import { GetUserApplicationsService } from './services/get-user-applications.ser
 import { GetOfferApplicationsService } from './services/get-offer-applications.service';
 import { UpdateApplicationStatusService } from './services/update-application-status.service';
 import { UpdateOfferStatusService } from './services/update-offer-status.service';
+import { PrismaService } from '../prisma.service';
 
 @Module({
   controllers: [OffersController],
   providers: [
+    PrismaService,
     CreateOfferService,
     GeneratePresignedUrlService,
     GetOffersByUserService,

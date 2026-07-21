@@ -4,20 +4,21 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { GeneratePresignedUrlDto } from '../dto/generate-presigned-url.dto';
 
 @Injectable()
 export class GeneratePresignedUrlService {
-  private s3Client: S3Client;
+  private supabase: SupabaseClient;
   private readonly BUCKET_NAME: string;
 
   constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
-    this.BUCKET_NAME = this.configService.getOrThrow<string>('S3_BUCKET_NAME');
+    const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
+    const supabaseKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    this.BUCKET_NAME = this.configService.getOrThrow<string>('SUPABASE_STORAGE_BUCKET');
 
-    this.s3Client = new S3Client({ region });
+    // Initialize Supabase Storage client
+    this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
   async generatePresignedUrl(dto: GeneratePresignedUrlDto) {
@@ -32,26 +33,13 @@ export class GeneratePresignedUrlService {
     const categoryConfig: Record<string, CategoryConfig> = {
       images: {
         folder: 'offers/images',
-        allowedTypes: [
-          'image/jpeg',
-          'image/jpg',
-          'image/png',
-          'image/gif',
-          'image/webp',
-        ],
-        errorMessage:
-          'Tipo de archivo no permitido. Solo se permiten imágenes.',
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+        errorMessage: 'Tipo de archivo no permitido. Solo se permiten imágenes.',
       },
       payments: {
         folder: 'offers/payments',
-        allowedTypes: [
-          'image/jpeg',
-          'image/jpg',
-          'image/png',
-          'application/pdf',
-        ],
-        errorMessage:
-          'Tipo de archivo no permitido. Solo se permiten imágenes o PDF.',
+        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'],
+        errorMessage: 'Tipo de archivo no permitido. Solo se permiten imágenes o PDF.',
       },
       resumes: {
         folder: 'users/resumes',
@@ -60,8 +48,7 @@ export class GeneratePresignedUrlService {
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ],
-        errorMessage:
-          'Tipo de archivo no permitido para hojas de vida. Solo PDF o DOC/DOCX.',
+        errorMessage: 'Tipo de archivo no permitido para hojas de vida. Solo PDF o DOC/DOCX.',
       },
     };
 
@@ -80,34 +67,33 @@ export class GeneratePresignedUrlService {
     const key = `${config.folder}/${uniqueFileName}`;
 
     try {
-      const command = new PutObjectCommand({
-        Bucket: this.BUCKET_NAME,
-        Key: key,
-        ContentType: fileType,
-        Metadata: {
-          category: fileCategory,
-          uploadedBy: 'job-portal-api',
-          uploadedAt: new Date().toISOString(),
-        },
-      });
+      // Replaced AWS S3 SDK with Supabase Signed Upload URL
+      const { data, error } = await this.supabase.storage
+        .from(this.BUCKET_NAME)
+        .createSignedUploadUrl(key);
 
-      const signedUrl = await getSignedUrl(this.s3Client, command, {
-        expiresIn: 900,
-      });
-      const region = await this.s3Client.config.region();
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // Reconstruct the public retrieval URL for your frontend
+      const supabaseUrl = this.configService.get<string>('SUPABASE_URL');
+      const publicRetrievalUrl = `${supabaseUrl}/storage/v1/object/public/${this.BUCKET_NAME}/${key}`;
 
       return {
         statusCode: 200,
-        signedUrl,
-        key,
-        url: `https://${this.BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`,
+        signedUrl: data.signedUrl,
+        key: data.path,
+        url: publicRetrievalUrl, 
         category: fileCategory,
       };
     } catch (error) {
       console.error('Error generando URL firmada:', error);
+      
+      const errorMessage = error instanceof Error ? error.message : 'Supabase Storage Error';
       throw new InternalServerErrorException({
         message: 'Error al generar la URL firmada.',
-        error: error instanceof Error ? error.message : 'S3 Error',
+        error: errorMessage,
       });
     }
   }

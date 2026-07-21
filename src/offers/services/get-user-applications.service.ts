@@ -1,40 +1,25 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PrismaService } from '../../prisma.service';
 
 @Injectable()
 export class GetUserApplicationsService {
-  private docClient: DynamoDBDocumentClient;
-  private readonly TABLE_NAME: string;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(private configService: ConfigService) {
-    const region = this.configService.getOrThrow<string>('AWS_REGION');
-    this.TABLE_NAME = this.configService.getOrThrow<string>(
-      'DYNAMODB_TABLE_NAME',
-    );
-
-    const ddbClient = new DynamoDBClient({ region });
-    this.docClient = DynamoDBDocumentClient.from(ddbClient);
-  }
-
-  async getUserApplications(cognitoId: string) {
+  async getUserApplications(userId: string) {
     try {
-      const command = new QueryCommand({
-        TableName: this.TABLE_NAME,
-        KeyConditionExpression: 'pk = :pk AND begins_with(sk, :skPrefix)',
-        ExpressionAttributeValues: {
-          ':pk': `USER#${cognitoId}`,
-          ':skPrefix': 'APPLICATION#',
+      const applications = await this.prisma.application.findMany({
+        where: {
+          userId: userId,
         },
+        include: {
+          jobVacancy: true, // Includes the details of the job applied to
+        }
       });
-
-      const result = await this.docClient.send(command);
 
       return {
         statusCode: 200,
-        count: result.Count || 0,
-        applications: result.Items || [],
+        count: applications.length,
+        applications: applications,
       };
     } catch (error) {
       console.error('Error al obtener las postulaciones del usuario:', error);

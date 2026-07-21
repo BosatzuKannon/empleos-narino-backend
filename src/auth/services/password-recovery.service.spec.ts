@@ -6,15 +6,48 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 
+jest.mock('@supabase/supabase-js', () => {
+  const mockResetPasswordForEmail = jest.fn();
+  const mockVerifyOtp = jest.fn();
+  const mockUpdateUserById = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        resetPasswordForEmail: mockResetPasswordForEmail,
+        verifyOtp: mockVerifyOtp,
+        admin: {
+          updateUserById: mockUpdateUserById,
+        },
+      },
+    })),
+    __mocks: {
+      resetPasswordForEmail: mockResetPasswordForEmail,
+      verifyOtp: mockVerifyOtp,
+      updateUserById: mockUpdateUserById,
+    },
+  };
+});
+
 describe('PasswordRecoveryService', () => {
   let service: PasswordRecoveryService;
+  let mocks: {
+    resetPasswordForEmail: jest.Mock;
+    verifyOtp: jest.Mock;
+    updateUserById: jest.Mock;
+  };
 
   beforeEach(async () => {
+    const supabaseModule = require('@supabase/supabase-js');
+    mocks = supabaseModule.__mocks;
+    mocks.resetPasswordForEmail.mockReset();
+    mocks.verifyOtp.mockReset();
+    mocks.updateUserById.mockReset();
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
         const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          COGNITO_CLIENT_ID: 'test-client-id',
+          SUPABASE_URL: 'https://mock-url.supabase.co',
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
         };
         return config[key];
       }),
@@ -23,10 +56,7 @@ describe('PasswordRecoveryService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PasswordRecoveryService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -41,9 +71,7 @@ describe('PasswordRecoveryService', () => {
     const mockDto = { email: 'prueba@empleosnarino.com' };
 
     it('debería enviar el código de recuperación exitosamente', async () => {
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+      mocks.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
 
       const result = await service.forgotPassword(mockDto);
 
@@ -51,17 +79,16 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Código de recuperación de contraseña enviado al email.',
       });
-      expect(cognitoSendMock).toHaveBeenCalledTimes(1);
+      expect(mocks.resetPasswordForEmail).toHaveBeenCalledTimes(1);
     });
 
-    it('debería lanzar InternalServerErrorException en caso de error de AWS', async () => {
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de red'));
+    it('debería lanzar InternalServerErrorException en caso de error de Supabase', async () => {
+      mocks.resetPasswordForEmail.mockResolvedValueOnce({
+        data: null,
+        error: { message: 'Failed to send' },
+      });
 
-      await expect(service.forgotPassword(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.forgotPassword(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
   });
 
@@ -73,9 +100,11 @@ describe('PasswordRecoveryService', () => {
     };
 
     it('debería confirmar la nueva contraseña exitosamente', async () => {
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+      mocks.verifyOtp.mockResolvedValueOnce({
+        data: { user: { id: 'mock-user-id' } },
+        error: null,
+      });
+      mocks.updateUserById.mockResolvedValueOnce({ data: { user: {} }, error: null });
 
       const result = await service.confirmNewPassword(mockDto);
 
@@ -83,32 +112,17 @@ describe('PasswordRecoveryService', () => {
         statusCode: 200,
         message: 'Contraseña actualizada exitosamente.',
       });
-      expect(cognitoSendMock).toHaveBeenCalledTimes(1);
+      expect(mocks.verifyOtp).toHaveBeenCalledTimes(1);
+      expect(mocks.updateUserById).toHaveBeenCalledTimes(1);
     });
 
     it('debería lanzar BadRequestException si el código es incorrecto', async () => {
-      const error = new Error(
-        'Invalid code provided, please request a code again.',
-      );
-      error.name = 'CodeMismatchException';
+      mocks.verifyOtp.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Token has expired or is invalid' },
+      });
 
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(error);
-
-      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-
-    it('debería lanzar InternalServerErrorException para errores generales de AWS', async () => {
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Error inesperado'));
-
-      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(BadRequestException);
     });
   });
 });

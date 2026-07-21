@@ -1,25 +1,24 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateOfferService } from './create-offer.service';
-import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'test-uuid-1234'),
-}));
-
 describe('CreateOfferService', () => {
   let service: CreateOfferService;
+  let prismaMock: { jobVacancy: { create: jest.Mock } };
 
   beforeEach(async () => {
-    const mockConfigService = {
-      getOrThrow: jest.fn().mockReturnValue('dummy-value'),
+    prismaMock = {
+      jobVacancy: {
+        create: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CreateOfferService,
-        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -31,11 +30,21 @@ describe('CreateOfferService', () => {
   });
 
   it('debería crear una oferta exitosamente', async () => {
-    const dynamoSendMock = jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockResolvedValueOnce({});
+    const mockCreatedOffer = {
+      id: 'test-uuid-1234',
+      title: 'Dev',
+      description: 'Test',
+      location: 'Pasto',
+      salary: 1000,
+      contractType: 'Indefinido',
+      requirements: 'Test',
+      status: 'ACTIVE',
+      companyId: 'user-123',
+    };
 
-    const dto = {
+    prismaMock.jobVacancy.create.mockResolvedValueOnce(mockCreatedOffer);
+
+    const dto: CreateOfferDto = {
       titulo: 'Dev',
       empresa: 'Fucsol',
       ubicacion: 'Pasto',
@@ -48,14 +57,24 @@ describe('CreateOfferService', () => {
     const result = await service.createOffer('user-123', dto);
 
     expect(result.statusCode).toBe(201);
-    expect(result.offer.offer_id).toBe('test-uuid-1234');
-    expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+    expect(result.offer).toEqual(mockCreatedOffer);
+    expect(prismaMock.jobVacancy.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.jobVacancy.create).toHaveBeenCalledWith({
+      data: {
+        title: 'Dev',
+        description: 'Test',
+        location: 'Pasto',
+        salary: 1000,
+        contractType: 'Indefinido',
+        requirements: 'Test',
+        status: 'ACTIVE',
+        companyId: 'user-123',
+      },
+    });
   });
 
-  it('debería lanzar InternalServerErrorException si DynamoDB falla', async () => {
-    jest
-      .spyOn(service['docClient'] as any, 'send')
-      .mockRejectedValueOnce(new Error('Fallo DB'));
+  it('debería lanzar InternalServerErrorException si Prisma falla', async () => {
+    prismaMock.jobVacancy.create.mockRejectedValueOnce(new Error('Fallo DB'));
 
     await expect(
       service.createOffer('user-123', {} as CreateOfferDto),

@@ -1,22 +1,46 @@
-// src/auth/services/signup.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { SignupService } from './signup.service';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
+
+jest.mock('@supabase/supabase-js', () => {
+  const mockCreateUser = jest.fn();
+  return {
+    createClient: jest.fn(() => ({
+      auth: {
+        admin: {
+          createUser: mockCreateUser,
+        },
+      },
+    })),
+    __mockCreateUser: mockCreateUser,
+  };
+});
 
 describe('SignupService', () => {
   let service: SignupService;
+  let prismaMock: {
+    user: { update: jest.Mock };
+    company: { create: jest.Mock };
+  };
+  let mockCreateUser: jest.Mock;
 
   beforeEach(async () => {
-    // 1. Mockeamos el ConfigService para simular las variables de entorno
+    const supabaseModule = require('@supabase/supabase-js');
+    mockCreateUser = supabaseModule.__mockCreateUser;
+    mockCreateUser.mockReset();
+
+    prismaMock = {
+      user: { update: jest.fn() },
+      company: { create: jest.fn() },
+    };
+
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
-        // Le decimos a TypeScript que este objeto solo tiene llaves y valores string
         const config: Record<string, string> = {
-          AWS_REGION: 'us-east-2',
-          DYNAMODB_TABLE_NAME: 'job_portal',
-          COGNITO_CLIENT_ID: 'test-client-id',
-          COGNITO_USER_POOL_ID: 'test-user-pool-id',
+          SUPABASE_URL: 'https://mock-url.supabase.co',
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
         };
         return config[key];
       }),
@@ -25,10 +49,8 @@ describe('SignupService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SignupService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
+        { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -52,50 +74,31 @@ describe('SignupService', () => {
       nombre_empresa: '',
     };
 
-    it('debería registrar un usuario exitosamente en Cognito y DynamoDB', async () => {
-      // Engañamos a TypeScript casteando los clientes a 'any' antes de espiar 'send'
-      const cognitoSendMock = jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockResolvedValueOnce({ UserSub: 'mock-cognito-id-123' })
-        .mockResolvedValueOnce({})
-        .mockResolvedValueOnce({});
-
-      const dynamoSendMock = jest
-        .spyOn(service['docClient'] as any, 'send')
-        .mockResolvedValueOnce({});
+    it('debería registrar un usuario exitosamente', async () => {
+      mockCreateUser.mockResolvedValueOnce({ data: { user: { id: 'mock-id' } }, error: null });
+      prismaMock.user.update.mockResolvedValueOnce({});
 
       const result = await service.signUp(mockDto);
 
-      expect(result).toEqual({
-        statusCode: 200,
-        message: 'Registro exitoso. El usuario puede iniciar sesión.',
+      expect(result.statusCode).toBe(201);
+      expect(result.message).toContain('Registro exitoso');
+      expect(mockCreateUser).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.update).toHaveBeenCalledTimes(1);
+    });
+
+    it('debería lanzar InternalServerErrorException si el correo ya está registrado', async () => {
+      mockCreateUser.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'A user with this email address has already been registered' },
       });
 
-      expect(cognitoSendMock).toHaveBeenCalledTimes(3);
-      expect(dynamoSendMock).toHaveBeenCalledTimes(1);
+      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
 
-    it('debería lanzar InternalServerErrorException si ocurre un error en AWS', async () => {
-      // Aquí también aplicamos el cast al cliente
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
+    it('debería lanzar InternalServerErrorException si ocurre un error general', async () => {
+      mockCreateUser.mockRejectedValueOnce(new Error('Fallo de conexión'));
 
-      await expect(service.signUp(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
-    });
-
-    it('debería lanzar InternalServerErrorException si ocurre un error en AWS', async () => {
-      // Simulamos que Cognito falla y lanza un error
-      jest
-        .spyOn(service['cognitoClient'] as any, 'send')
-        .mockRejectedValueOnce(new Error('Fallo de conexión a Cognito'));
-
-      // Verificamos que el servicio capture el error y lance nuestra excepción personalizada de Nest
-      await expect(service.signUp(mockDto)).rejects.toThrow(
-        InternalServerErrorException,
-      );
+      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
     });
   });
 });
