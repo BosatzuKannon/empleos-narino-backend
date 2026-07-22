@@ -21,11 +21,15 @@ describe('GetOfferApplicationsService', () => {
       ],
     }).compile();
 
-    service = module.get<GetOfferApplicationsService>(GetOfferApplicationsService);
+    service = module.get<GetOfferApplicationsService>(
+      GetOfferApplicationsService,
+    );
   });
 
   it('debería obtener los candidatos de una oferta', async () => {
-    const mockApplications = [{ userId: 'USER#123', jobId: 'offer-123', status: 'SENT' }];
+    const mockApplications = [
+      { userId: 'USER#123', jobId: 'offer-123', status: 'SENT' },
+    ];
     prismaMock.application.findMany.mockResolvedValueOnce(mockApplications);
 
     const result = await service.getOfferApplications('offer-123');

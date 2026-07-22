@@ -22,7 +22,9 @@ export class CheckAppVersionService {
       return {
         statusCode: 200,
         min_version_code: config.minVersionCode,
-        message_es: config.messageEs || 'Hay una actualización obligatoria para continuar.',
+        message_es:
+          config.messageEs ||
+          'Hay una actualización obligatoria para continuar.',
         app_status: config.appStatus,
         app_status_message: config.appStatusMessage,
       };

@@ -30,14 +30,35 @@ describe('OffersController', () => {
       controllers: [OffersController],
       providers: [
         { provide: CreateOfferService, useValue: mockCreateOfferService },
-        { provide: GetActiveOffersService, useValue: mockGetActiveOffersService },
-        { provide: GetOffersByUserService, useValue: mockGetOffersByUserService },
-        { provide: UpdateOfferStatusService, useValue: mockUpdateOfferStatusService },
-        { provide: GeneratePresignedUrlService, useValue: mockGeneratePresignedUrlService },
+        {
+          provide: GetActiveOffersService,
+          useValue: mockGetActiveOffersService,
+        },
+        {
+          provide: GetOffersByUserService,
+          useValue: mockGetOffersByUserService,
+        },
+        {
+          provide: UpdateOfferStatusService,
+          useValue: mockUpdateOfferStatusService,
+        },
+        {
+          provide: GeneratePresignedUrlService,
+          useValue: mockGeneratePresignedUrlService,
+        },
         { provide: ApplyToJobService, useValue: mockApplyToJobService },
-        { provide: GetUserApplicationsService, useValue: mockGetUserApplicationsService },
-        { provide: GetOfferApplicationsService, useValue: mockGetOfferApplicationsService },
-        { provide: UpdateApplicationStatusService, useValue: mockUpdateApplicationStatusService },
+        {
+          provide: GetUserApplicationsService,
+          useValue: mockGetUserApplicationsService,
+        },
+        {
+          provide: GetOfferApplicationsService,
+          useValue: mockGetOfferApplicationsService,
+        },
+        {
+          provide: UpdateApplicationStatusService,
+          useValue: mockUpdateApplicationStatusService,
+        },
       ],
     }).compile();
 

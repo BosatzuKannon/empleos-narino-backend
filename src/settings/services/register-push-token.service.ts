@@ -6,23 +6,26 @@ import { RegisterPushTokenDto } from '../dto/register-push-token.dto';
 export class RegisterPushTokenService {
   constructor(private prisma: PrismaService) {}
 
-  async registerPushToken(userId: string, registerPushTokenDto: RegisterPushTokenDto) {
+  async registerPushToken(
+    userId: string,
+    registerPushTokenDto: RegisterPushTokenDto,
+  ) {
     const { token, platform } = registerPushTokenDto;
 
     if (!token) {
-      return { 
-        statusCode: 200, 
-        message: 'No push token provided, skipping registration.' 
+      return {
+        statusCode: 200,
+        message: 'No push token provided, skipping registration.',
       };
     }
 
     try {
       const device = await this.prisma.device.upsert({
         where: { pushToken: token },
-        update: { 
-          userId: userId, 
+        update: {
+          userId: userId,
           platform: platform,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         },
         create: {
           pushToken: token,

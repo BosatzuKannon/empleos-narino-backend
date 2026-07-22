@@ -13,7 +13,7 @@ export class GetUserApplicationsService {
         },
         include: {
           jobVacancy: true, // Includes the details of the job applied to
-        }
+        },
       });
 
       return {

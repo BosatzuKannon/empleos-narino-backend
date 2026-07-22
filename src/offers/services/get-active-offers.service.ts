@@ -16,7 +16,7 @@ export class GetActiveOffersService {
         },
         include: {
           company: true, // Includes the company data tied to the offer
-        }
+        },
       });
 
       return {
@@ -27,7 +27,10 @@ export class GetActiveOffersService {
       console.error('Error al obtener ofertas activas:', error);
       throw new InternalServerErrorException({
         message: 'Error interno del servidor al obtener las ofertas.',
-        error: error instanceof Error ? error.message : 'Error desconocido de Prisma',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Error desconocido de Prisma',
       });
     }
   }

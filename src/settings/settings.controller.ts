@@ -1,4 +1,11 @@
-import { Controller, Post, Get, Body, Headers, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Headers,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { RegisterPushTokenService } from './services/register-push-token.service';
 import { CheckAppVersionService } from './services/check-app-version.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
@@ -29,7 +36,9 @@ export class SettingsController {
       // 2. Extract the user ID directly from the Supabase JWT
       const token = authHeader.split(' ')[1];
       const payloadBase64 = token.split('.')[1];
-      const payload = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));
+      const payload = JSON.parse(
+        Buffer.from(payloadBase64, 'base64').toString('utf-8'),
+      );
       const userId = payload.sub;
 
       if (!userId) {
@@ -37,8 +46,10 @@ export class SettingsController {
       }
 
       // 3. Pass BOTH arguments to the service, fixing the TS2554 error!
-      return this.registerPushTokenService.registerPushToken(userId, registerPushTokenDto);
-      
+      return this.registerPushTokenService.registerPushToken(
+        userId,
+        registerPushTokenDto,
+      );
     } catch (error) {
       throw new UnauthorizedException('Token inválido o expirado.');
     }

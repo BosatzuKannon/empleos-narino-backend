@@ -1,8 +1,12 @@
-import { Injectable, InternalServerErrorException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SignUpDto } from '../dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { PrismaService } from '../../prisma.service'; 
+import { PrismaService } from '../../prisma.service';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
@@ -14,7 +18,9 @@ export class SignupService {
     private prisma: PrismaService,
   ) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
-    const supabaseServiceKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseServiceKey = this.configService.getOrThrow<string>(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
 
     this.supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
@@ -39,22 +45,28 @@ export class SignupService {
 
     try {
       // 1. Create and auto-confirm user in Supabase Auth Cloud
-      const { data: authData, error: authError } = await this.supabaseAdmin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // Instantly verifies email
-        user_metadata: { firstName: nombres, lastName: apellidos },
-      });
+      const { data: authData, error: authError } =
+        await this.supabaseAdmin.auth.admin.createUser({
+          email,
+          password,
+          email_confirm: true, // Instantly verifies email
+          user_metadata: { firstName: nombres, lastName: apellidos },
+        });
 
       if (authError || !authData.user) {
-        console.log('Supabase Rejection:', authError); 
-  throw new BadRequestException(authError?.message || 'Error creating auth user.');
+        console.log('Supabase Rejection:', authError);
+        throw new BadRequestException(
+          authError?.message || 'Error creating auth user.',
+        );
       }
 
       const supabaseUid = authData.user.id;
 
       // 2. Map frontend role to our explicit database UserRole enum
-      const finalRole = user_type === 'COMPANY_ADMIN' ? UserRole.COMPANY_ADMIN : UserRole.CANDIDATE;
+      const finalRole =
+        user_type === 'COMPANY_ADMIN'
+          ? UserRole.COMPANY_ADMIN
+          : UserRole.CANDIDATE;
 
       // 3. Complete the rich user profile via Prisma
       // Note: The database trigger created the baseline row, so we update the extended fields here.
@@ -81,13 +93,17 @@ export class SignupService {
 
       return {
         statusCode: 201,
-        message: 'Registro exitoso. El usuario puede iniciar sesión inmediatamente.',
+        message:
+          'Registro exitoso. El usuario puede iniciar sesión inmediatamente.',
         userId: supabaseUid,
       };
     } catch (error) {
       console.error('Error durante el registro del usuario:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Supabase/Prisma';
+
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido de Supabase/Prisma';
       throw new InternalServerErrorException({
         message: 'Error al registrar el usuario en la nueva infraestructura.',
         error: errorMessage,

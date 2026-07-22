@@ -53,7 +53,11 @@ describe('UpdateApplicationStatusService', () => {
   });
 
   it('debería actualizar estado y enviar correo (si aplica)', async () => {
-    const mockUpdated = { userId: 'user-123', jobId: 'offer-123', status: 'INTERVIEWING' };
+    const mockUpdated = {
+      userId: 'user-123',
+      jobId: 'offer-123',
+      status: 'INTERVIEWING',
+    };
     prismaMock.application.update.mockResolvedValueOnce(mockUpdated);
 
     const dto: UpdateApplicationStatusDto = {

@@ -92,7 +92,9 @@ describe('SigninService', () => {
         error: { message: 'Invalid login credentials' },
       });
 
-      await expect(service.signIn(mockDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.signIn(mockDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('debería lanzar ForbiddenException si el correo no está confirmado', async () => {
@@ -107,7 +109,9 @@ describe('SigninService', () => {
     it('debería lanzar InternalServerErrorException para errores generales', async () => {
       mockSignInWithPassword.mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(service.signIn(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.signIn(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

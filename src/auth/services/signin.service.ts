@@ -14,7 +14,9 @@ export class SigninService {
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseKey = this.configService.getOrThrow<string>(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
 
     // Initialize the Supabase client specifically for server-side auth
     this.supabase = createClient(supabaseUrl, supabaseKey, {
@@ -46,7 +48,8 @@ export class SigninService {
 
         if (error.message.includes('Email not confirmed')) {
           throw new ForbiddenException({
-            message: 'El usuario no ha sido confirmado. Por favor, confirme su cuenta.',
+            message:
+              'El usuario no ha sido confirmado. Por favor, confirme su cuenta.',
             error: error.message,
           });
         }
@@ -81,7 +84,10 @@ export class SigninService {
         throw error;
       }
 
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Supabase';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido de Supabase';
       throw new InternalServerErrorException({
         message: 'Error al iniciar sesión.',
         error: errorMessage,

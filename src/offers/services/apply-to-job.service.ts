@@ -11,7 +11,7 @@ export class ApplyToJobService {
       const application = await this.prisma.application.create({
         data: {
           userId: userId,
-          jobId: applyToJobDto.offer_id, 
+          jobId: applyToJobDto.offer_id,
           status: 'SENT',
           // Map any other properties from applyToJobDto here if they exist in your Prisma schema
         },

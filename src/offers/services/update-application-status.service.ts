@@ -44,7 +44,11 @@ export class UpdateApplicationStatusService {
       });
 
       // Enviamos correo informativo al candidato si el estado es relevante
-      await this.sendStatusEmail(candidateEmail, offerTitle, status as ApplicationStatus);
+      await this.sendStatusEmail(
+        candidateEmail,
+        offerTitle,
+        status as ApplicationStatus,
+      );
 
       return {
         statusCode: 200,
@@ -85,7 +89,7 @@ export class UpdateApplicationStatusService {
         htmlContent = `<p>¡Enhorabuena! Has sido elegido para la vacante. Revisa tu correo o teléfono, te contactarán pronto.</p>`;
         break;
       default:
-        return; 
+        return;
     }
 
     try {

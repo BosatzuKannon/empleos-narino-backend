@@ -6,10 +6,6 @@ import { PrismaService } from '../prisma.service';
 
 @Module({
   controllers: [SettingsController],
-  providers: [
-    PrismaService,
-    CheckAppVersionService, 
-    RegisterPushTokenService
-  ],
+  providers: [PrismaService, CheckAppVersionService, RegisterPushTokenService],
 })
 export class SettingsModule {}

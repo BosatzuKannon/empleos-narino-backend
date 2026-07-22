@@ -5,7 +5,10 @@ import { BadRequestException } from '@nestjs/common';
 
 jest.mock('@supabase/supabase-js', () => {
   const mockCreateSignedUploadUrl = jest.fn().mockResolvedValue({
-    data: { signedUrl: 'https://signed-test-url.com', path: 'offers/images/test.jpg' },
+    data: {
+      signedUrl: 'https://signed-test-url.com',
+      path: 'offers/images/test.jpg',
+    },
     error: null,
   });
 
@@ -29,7 +32,10 @@ describe('GeneratePresignedUrlService', () => {
     const supabaseModule = require('@supabase/supabase-js');
     mockCreateSignedUploadUrl = supabaseModule.__mockCreateSignedUploadUrl;
     mockCreateSignedUploadUrl.mockResolvedValue({
-      data: { signedUrl: 'https://signed-test-url.com', path: 'offers/images/test.jpg' },
+      data: {
+        signedUrl: 'https://signed-test-url.com',
+        path: 'offers/images/test.jpg',
+      },
       error: null,
     });
 

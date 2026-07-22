@@ -13,7 +13,7 @@ import { OffersModule } from './offers/offers.module';
     AuthModule,
     ProfileModule,
     SettingsModule,
-    OffersModule
+    OffersModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -9,9 +9,9 @@ import { PrismaService } from '../prisma.service';
   controllers: [AuthController],
   providers: [
     PrismaService,
-    SignupService, 
-    SigninService, 
-    PasswordRecoveryService
-    ],
+    SignupService,
+    SigninService,
+    PasswordRecoveryService,
+  ],
 })
 export class AuthModule {}

@@ -15,7 +15,7 @@ export class CreateOfferService {
       salario,
       tipo_contrato,
       requisitos,
-      // 'empresa' is likely handled by the companyId relation now, 
+      // 'empresa' is likely handled by the companyId relation now,
       // but you can add it to the mapping below if your schema requires it!
     } = createOfferDto;
 
@@ -26,10 +26,10 @@ export class CreateOfferService {
           title: titulo,
           description: descripcion,
           location: ubicacion,
-          salary: salario, 
+          salary: salario,
           contractType: tipo_contrato,
           requirements: requisitos,
-          status: 'ACTIVE', 
+          status: 'ACTIVE',
           companyId: userId, // I see you adjusted this in your screenshot to link correctly!
         },
       });
@@ -41,8 +41,9 @@ export class CreateOfferService {
       };
     } catch (error) {
       console.error('Error al crear la oferta:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Prisma';
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error desconocido de Prisma';
       throw new InternalServerErrorException({
         message: 'Error interno del servidor al crear la oferta.',
         error: errorMessage,

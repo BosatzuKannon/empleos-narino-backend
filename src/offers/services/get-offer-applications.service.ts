@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service'; 
+import { PrismaService } from '../../prisma.service';
 
 @Injectable()
 export class GetOfferApplicationsService {
@@ -13,7 +13,7 @@ export class GetOfferApplicationsService {
         },
         include: {
           user: true, // Includes the candidate's profile data
-        }
+        },
       });
 
       return {

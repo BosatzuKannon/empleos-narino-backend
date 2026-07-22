@@ -20,10 +20,12 @@ export class GetOffersByUserService {
       };
     } catch (error) {
       console.error('Error al obtener ofertas por usuario:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Error desconocido de Prisma';
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Error desconocido de Prisma';
       throw new InternalServerErrorException({
-        message: 'Error interno del servidor al obtener las ofertas del usuario.',
+        message:
+          'Error interno del servidor al obtener las ofertas del usuario.',
         error: errorMessage,
       });
     }

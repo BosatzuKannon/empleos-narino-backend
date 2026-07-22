@@ -14,7 +14,9 @@ export class PasswordRecoveryService {
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
-    const supabaseServiceKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
+    const supabaseServiceKey = this.configService.getOrThrow<string>(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
 
     // Usamos el cliente Admin para poder actualizar la contraseña directamente tras verificar el código
     this.supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
@@ -30,7 +32,8 @@ export class PasswordRecoveryService {
 
     try {
       // Supabase enviará automáticamente un email con un código OTP de 6 dígitos (si está configurado así en tu dashboard)
-      const { error } = await this.supabaseAdmin.auth.resetPasswordForEmail(email);
+      const { error } =
+        await this.supabaseAdmin.auth.resetPasswordForEmail(email);
 
       if (error) {
         throw new Error(error.message);
@@ -44,7 +47,9 @@ export class PasswordRecoveryService {
       console.error('Error with forgot password request:', error);
 
       const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido de Supabase';
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido de Supabase';
       throw new InternalServerErrorException({
         message: 'Error al solicitar el código de recuperación de contraseña',
         error: errorMessage,
@@ -57,11 +62,12 @@ export class PasswordRecoveryService {
 
     try {
       // 1. Verificamos que el código OTP que el usuario ingresó es correcto
-      const { data, error: verifyError } = await this.supabaseAdmin.auth.verifyOtp({
-        email,
-        token: confirmationCode,
-        type: 'recovery',
-      });
+      const { data, error: verifyError } =
+        await this.supabaseAdmin.auth.verifyOtp({
+          email,
+          token: confirmationCode,
+          type: 'recovery',
+        });
 
       if (verifyError) {
         if (verifyError.message.includes('Token has expired or is invalid')) {
@@ -74,14 +80,16 @@ export class PasswordRecoveryService {
       }
 
       if (!data.user) {
-        throw new Error('No se pudo identificar al usuario tras verificar el código.');
+        throw new Error(
+          'No se pudo identificar al usuario tras verificar el código.',
+        );
       }
 
       // 2. Si el código es correcto, usamos el Admin API para actualizar la contraseña del usuario
-      const { error: updateError } = await this.supabaseAdmin.auth.admin.updateUserById(
-        data.user.id,
-        { password: newPassword }
-      );
+      const { error: updateError } =
+        await this.supabaseAdmin.auth.admin.updateUserById(data.user.id, {
+          password: newPassword,
+        });
 
       if (updateError) {
         throw new Error(updateError.message);
@@ -100,7 +108,9 @@ export class PasswordRecoveryService {
       }
 
       const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido de Supabase';
+        error instanceof Error
+          ? error.message
+          : 'Error desconocido de Supabase';
       throw new InternalServerErrorException({
         message: 'Error al confirmar la nueva contraseña.',
         error: errorMessage,

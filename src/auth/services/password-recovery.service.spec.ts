@@ -71,7 +71,10 @@ describe('PasswordRecoveryService', () => {
     const mockDto = { email: 'prueba@empleosnarino.com' };
 
     it('debería enviar el código de recuperación exitosamente', async () => {
-      mocks.resetPasswordForEmail.mockResolvedValueOnce({ data: {}, error: null });
+      mocks.resetPasswordForEmail.mockResolvedValueOnce({
+        data: {},
+        error: null,
+      });
 
       const result = await service.forgotPassword(mockDto);
 
@@ -88,7 +91,9 @@ describe('PasswordRecoveryService', () => {
         error: { message: 'Failed to send' },
       });
 
-      await expect(service.forgotPassword(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.forgotPassword(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 
@@ -104,7 +109,10 @@ describe('PasswordRecoveryService', () => {
         data: { user: { id: 'mock-user-id' } },
         error: null,
       });
-      mocks.updateUserById.mockResolvedValueOnce({ data: { user: {} }, error: null });
+      mocks.updateUserById.mockResolvedValueOnce({
+        data: { user: {} },
+        error: null,
+      });
 
       const result = await service.confirmNewPassword(mockDto);
 
@@ -122,7 +130,9 @@ describe('PasswordRecoveryService', () => {
         error: { message: 'Token has expired or is invalid' },
       });
 
-      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(BadRequestException);
+      await expect(service.confirmNewPassword(mockDto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

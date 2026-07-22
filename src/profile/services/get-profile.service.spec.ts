@@ -35,7 +35,11 @@ describe('GetProfileService', () => {
     const userId = 'usuario-123';
 
     it('debería obtener el perfil exitosamente', async () => {
-      const mockProfile = { id: userId, firstName: 'Carlos', lastName: 'Jaramillo' };
+      const mockProfile = {
+        id: userId,
+        firstName: 'Carlos',
+        lastName: 'Jaramillo',
+      };
       prismaMock.user.findUnique.mockResolvedValueOnce(mockProfile);
 
       const result = await service.getProfile(userId);
@@ -59,7 +63,9 @@ describe('GetProfileService', () => {
     });
 
     it('debería lanzar InternalServerErrorException en caso de error de Prisma', async () => {
-      prismaMock.user.findUnique.mockRejectedValueOnce(new Error('Fallo de conexión'));
+      prismaMock.user.findUnique.mockRejectedValueOnce(
+        new Error('Fallo de conexión'),
+      );
 
       await expect(service.getProfile(userId)).rejects.toThrow(
         InternalServerErrorException,

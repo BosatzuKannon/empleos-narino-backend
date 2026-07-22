@@ -75,7 +75,10 @@ describe('SignupService', () => {
     };
 
     it('debería registrar un usuario exitosamente', async () => {
-      mockCreateUser.mockResolvedValueOnce({ data: { user: { id: 'mock-id' } }, error: null });
+      mockCreateUser.mockResolvedValueOnce({
+        data: { user: { id: 'mock-id' } },
+        error: null,
+      });
       prismaMock.user.update.mockResolvedValueOnce({});
 
       const result = await service.signUp(mockDto);
@@ -89,16 +92,22 @@ describe('SignupService', () => {
     it('debería lanzar InternalServerErrorException si el correo ya está registrado', async () => {
       mockCreateUser.mockResolvedValueOnce({
         data: { user: null },
-        error: { message: 'A user with this email address has already been registered' },
+        error: {
+          message: 'A user with this email address has already been registered',
+        },
       });
 
-      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.signUp(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
 
     it('debería lanzar InternalServerErrorException si ocurre un error general', async () => {
       mockCreateUser.mockRejectedValueOnce(new Error('Fallo de conexión'));
 
-      await expect(service.signUp(mockDto)).rejects.toThrow(InternalServerErrorException);
+      await expect(service.signUp(mockDto)).rejects.toThrow(
+        InternalServerErrorException,
+      );
     });
   });
 });

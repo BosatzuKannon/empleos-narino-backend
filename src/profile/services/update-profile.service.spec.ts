@@ -74,7 +74,9 @@ describe('UpdateProfileService', () => {
     });
 
     it('debería lanzar InternalServerErrorException en caso de error de Prisma', async () => {
-      prismaMock.user.findUnique.mockRejectedValueOnce(new Error('Fallo de conexión'));
+      prismaMock.user.findUnique.mockRejectedValueOnce(
+        new Error('Fallo de conexión'),
+      );
 
       await expect(service.updateProfile(userId, mockDto)).rejects.toThrow(
         InternalServerErrorException,

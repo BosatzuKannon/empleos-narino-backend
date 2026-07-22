@@ -11,13 +11,8 @@ export class UpdateProfileService {
   constructor(private prisma: PrismaService) {}
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
-    const {
-      nombres,
-      apellidos,
-      telefono,
-      fecha_nacimiento,
-      ciudad,
-    } = updateProfileDto;
+    const { nombres, apellidos, telefono, fecha_nacimiento, ciudad } =
+      updateProfileDto;
 
     try {
       // 1. Verify the user actually exists first
@@ -27,7 +22,8 @@ export class UpdateProfileService {
 
       if (!existingUser) {
         throw new NotFoundException({
-          message: 'No se encontró el perfil de usuario o no se realizaron cambios.',
+          message:
+            'No se encontró el perfil de usuario o no se realizaron cambios.',
         });
       }
 
@@ -37,7 +33,7 @@ export class UpdateProfileService {
       if (apellidos) dataToUpdate.lastName = apellidos;
       if (telefono) dataToUpdate.phone = telefono;
       if (ciudad) dataToUpdate.city = ciudad;
-      
+
       // Prisma expects a Date object for DateTime columns
       if (fecha_nacimiento) {
         dataToUpdate.birthDate = new Date(fecha_nacimiento);
@@ -64,7 +60,8 @@ export class UpdateProfileService {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido de Prisma';
       throw new InternalServerErrorException({
-        message: 'Error interno del servidor al actualizar el perfil de usuario.',
+        message:
+          'Error interno del servidor al actualizar el perfil de usuario.',
         error: errorMessage,
       });
     }

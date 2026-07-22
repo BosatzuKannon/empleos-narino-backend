@@ -14,8 +14,12 @@ export class GeneratePresignedUrlService {
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
-    const supabaseKey = this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY');
-    this.BUCKET_NAME = this.configService.getOrThrow<string>('SUPABASE_STORAGE_BUCKET');
+    const supabaseKey = this.configService.getOrThrow<string>(
+      'SUPABASE_SERVICE_ROLE_KEY',
+    );
+    this.BUCKET_NAME = this.configService.getOrThrow<string>(
+      'SUPABASE_STORAGE_BUCKET',
+    );
 
     // Initialize Supabase Storage client
     this.supabase = createClient(supabaseUrl, supabaseKey);
@@ -33,13 +37,26 @@ export class GeneratePresignedUrlService {
     const categoryConfig: Record<string, CategoryConfig> = {
       images: {
         folder: 'offers/images',
-        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-        errorMessage: 'Tipo de archivo no permitido. Solo se permiten imágenes.',
+        allowedTypes: [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+          'image/webp',
+        ],
+        errorMessage:
+          'Tipo de archivo no permitido. Solo se permiten imágenes.',
       },
       payments: {
         folder: 'offers/payments',
-        allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'],
-        errorMessage: 'Tipo de archivo no permitido. Solo se permiten imágenes o PDF.',
+        allowedTypes: [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'application/pdf',
+        ],
+        errorMessage:
+          'Tipo de archivo no permitido. Solo se permiten imágenes o PDF.',
       },
       resumes: {
         folder: 'users/resumes',
@@ -48,7 +65,8 @@ export class GeneratePresignedUrlService {
           'application/msword',
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ],
-        errorMessage: 'Tipo de archivo no permitido para hojas de vida. Solo PDF o DOC/DOCX.',
+        errorMessage:
+          'Tipo de archivo no permitido para hojas de vida. Solo PDF o DOC/DOCX.',
       },
     };
 
@@ -84,13 +102,14 @@ export class GeneratePresignedUrlService {
         statusCode: 200,
         signedUrl: data.signedUrl,
         key: data.path,
-        url: publicRetrievalUrl, 
+        url: publicRetrievalUrl,
         category: fileCategory,
       };
     } catch (error) {
       console.error('Error generando URL firmada:', error);
-      
-      const errorMessage = error instanceof Error ? error.message : 'Supabase Storage Error';
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Supabase Storage Error';
       throw new InternalServerErrorException({
         message: 'Error al generar la URL firmada.',
         error: errorMessage,

@@ -6,10 +6,6 @@ import { PrismaService } from '../prisma.service';
 
 @Module({
   controllers: [ProfileController],
-  providers: [
-    PrismaService,
-    GetProfileService, 
-    UpdateProfileService
-  ],
+  providers: [PrismaService, GetProfileService, UpdateProfileService],
 })
 export class ProfileModule {}

@@ -36,7 +36,11 @@ describe('RegisterPushTokenService', () => {
     };
 
     it('debería registrar el push token exitosamente', async () => {
-      const mockDevice = { id: 'device-123', pushToken: mockDto.token, platform: 'android' };
+      const mockDevice = {
+        id: 'device-123',
+        pushToken: mockDto.token,
+        platform: 'android',
+      };
       prismaMock.device.upsert.mockResolvedValueOnce(mockDevice);
 
       const result = await service.registerPushToken(userId, mockDto);
@@ -59,7 +63,10 @@ describe('RegisterPushTokenService', () => {
     });
 
     it('debería devolver mensaje si no se proporciona token', async () => {
-      const result = await service.registerPushToken(userId, { token: '', platform: 'android' });
+      const result = await service.registerPushToken(userId, {
+        token: '',
+        platform: 'android',
+      });
 
       expect(result).toEqual({
         statusCode: 200,
@@ -69,7 +76,9 @@ describe('RegisterPushTokenService', () => {
     });
 
     it('debería lanzar InternalServerErrorException si Prisma falla', async () => {
-      prismaMock.device.upsert.mockRejectedValueOnce(new Error('Fallo de escritura'));
+      prismaMock.device.upsert.mockRejectedValueOnce(
+        new Error('Fallo de escritura'),
+      );
 
       await expect(service.registerPushToken(userId, mockDto)).rejects.toThrow(
         InternalServerErrorException,

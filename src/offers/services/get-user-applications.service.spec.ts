@@ -21,11 +21,15 @@ describe('GetUserApplicationsService', () => {
       ],
     }).compile();
 
-    service = module.get<GetUserApplicationsService>(GetUserApplicationsService);
+    service = module.get<GetUserApplicationsService>(
+      GetUserApplicationsService,
+    );
   });
 
   it('debería obtener las postulaciones de un usuario', async () => {
-    const mockApplications = [{ userId: 'user-123', jobId: 'job-456', status: 'SENT' }];
+    const mockApplications = [
+      { userId: 'user-123', jobId: 'job-456', status: 'SENT' },
+    ];
     prismaMock.application.findMany.mockResolvedValueOnce(mockApplications);
 
     const result = await service.getUserApplications('user-123');
