@@ -5,13 +5,13 @@ import {
 } from '@nestjs/common';
 import { SignUpDto } from '../dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../../prisma.service';
 import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class SignupService {
-  private supabaseAdmin: SupabaseClient;
+  private supabaseAdmin: ReturnType<typeof createClient>;
 
   constructor(
     private configService: ConfigService,

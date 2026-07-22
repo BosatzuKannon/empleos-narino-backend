@@ -6,11 +6,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto';
 import { ConfirmNewPasswordDto } from '../dto/confirm-new-password.dto';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class PasswordRecoveryService {
-  private supabaseAdmin: SupabaseClient;
+  private supabaseAdmin: ReturnType<typeof createClient>;
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');

@@ -11,6 +11,10 @@ import { GetProfileService } from './services/get-profile.service';
 import { UpdateProfileService } from './services/update-profile.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
+interface JwtPayload {
+  sub?: string;
+}
+
 @Controller('profile')
 export class ProfileController {
   constructor(
@@ -46,7 +50,7 @@ export class ProfileController {
       const payloadJson = Buffer.from(payloadBase64, 'base64').toString(
         'utf-8',
       );
-      const payload = JSON.parse(payloadJson);
+      const payload = JSON.parse(payloadJson) as JwtPayload;
 
       // In Supabase JWTs, the user's UUID is stored in the "sub" (subject) field
       const userId = payload.sub;
@@ -59,7 +63,7 @@ export class ProfileController {
 
       // Pass the extracted ID to your service!
       return this.updateProfileService.updateProfile(userId, updateProfileDto);
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
   }

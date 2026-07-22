@@ -3,6 +3,11 @@ import { SignupService } from './signup.service';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
 import { InternalServerErrorException } from '@nestjs/common';
+import * as supabaseModule from '@supabase/supabase-js';
+
+interface MockedSignupModule {
+  __mockCreateUser: jest.Mock;
+}
 
 jest.mock('@supabase/supabase-js', () => {
   const mockCreateUser = jest.fn();
@@ -27,8 +32,8 @@ describe('SignupService', () => {
   let mockCreateUser: jest.Mock;
 
   beforeEach(async () => {
-    const supabaseModule = require('@supabase/supabase-js');
-    mockCreateUser = supabaseModule.__mockCreateUser;
+    const mockedModule = supabaseModule as unknown as MockedSignupModule;
+    mockCreateUser = mockedModule.__mockCreateUser;
     mockCreateUser.mockReset();
 
     prismaMock = {

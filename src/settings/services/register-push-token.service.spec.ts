@@ -53,7 +53,11 @@ describe('RegisterPushTokenService', () => {
       expect(prismaMock.device.upsert).toHaveBeenCalledTimes(1);
       expect(prismaMock.device.upsert).toHaveBeenCalledWith({
         where: { pushToken: mockDto.token },
-        update: { userId, platform: 'android', updatedAt: expect.any(Date) },
+        update: {
+          userId,
+          platform: 'android',
+          updatedAt: expect.any(Date) as Date,
+        },
         create: {
           pushToken: mockDto.token,
           platform: 'android',

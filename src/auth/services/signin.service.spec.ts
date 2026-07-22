@@ -6,6 +6,11 @@ import {
   ForbiddenException,
   InternalServerErrorException,
 } from '@nestjs/common';
+import * as supabaseModule from '@supabase/supabase-js';
+
+interface MockedSigninModule {
+  __mockSignInWithPassword: jest.Mock;
+}
 
 jest.mock('@supabase/supabase-js', () => {
   const mockSignInWithPassword = jest.fn();
@@ -24,8 +29,8 @@ describe('SigninService', () => {
   let mockSignInWithPassword: jest.Mock;
 
   beforeEach(async () => {
-    const supabaseModule = require('@supabase/supabase-js');
-    mockSignInWithPassword = supabaseModule.__mockSignInWithPassword;
+    const mockedModule = supabaseModule as unknown as MockedSigninModule;
+    mockSignInWithPassword = mockedModule.__mockSignInWithPassword;
     mockSignInWithPassword.mockReset();
 
     const mockConfigService = {

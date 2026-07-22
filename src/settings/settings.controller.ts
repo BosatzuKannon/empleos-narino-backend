@@ -10,6 +10,10 @@ import { RegisterPushTokenService } from './services/register-push-token.service
 import { CheckAppVersionService } from './services/check-app-version.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 
+interface JwtPayload {
+  sub?: string;
+}
+
 @Controller('settings')
 export class SettingsController {
   constructor(
@@ -38,7 +42,7 @@ export class SettingsController {
       const payloadBase64 = token.split('.')[1];
       const payload = JSON.parse(
         Buffer.from(payloadBase64, 'base64').toString('utf-8'),
-      );
+      ) as JwtPayload;
       const userId = payload.sub;
 
       if (!userId) {
@@ -50,7 +54,7 @@ export class SettingsController {
         userId,
         registerPushTokenDto,
       );
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Token inválido o expirado.');
     }
   }

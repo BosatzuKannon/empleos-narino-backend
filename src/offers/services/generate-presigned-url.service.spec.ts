@@ -2,6 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GeneratePresignedUrlService } from './generate-presigned-url.service';
 import { ConfigService } from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
+import * as supabaseModule from '@supabase/supabase-js';
+
+interface MockedPresignedModule {
+  __mockCreateSignedUploadUrl: jest.Mock;
+}
 
 jest.mock('@supabase/supabase-js', () => {
   const mockCreateSignedUploadUrl = jest.fn().mockResolvedValue({
@@ -29,8 +34,8 @@ describe('GeneratePresignedUrlService', () => {
   let mockCreateSignedUploadUrl: jest.Mock;
 
   beforeEach(async () => {
-    const supabaseModule = require('@supabase/supabase-js');
-    mockCreateSignedUploadUrl = supabaseModule.__mockCreateSignedUploadUrl;
+    const mockedModule = supabaseModule as unknown as MockedPresignedModule;
+    mockCreateSignedUploadUrl = mockedModule.__mockCreateSignedUploadUrl;
     mockCreateSignedUploadUrl.mockResolvedValue({
       data: {
         signedUrl: 'https://signed-test-url.com',

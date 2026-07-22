@@ -5,6 +5,15 @@ import {
   InternalServerErrorException,
   BadRequestException,
 } from '@nestjs/common';
+import * as supabaseModule from '@supabase/supabase-js';
+
+interface MockedPasswordRecoveryModule {
+  __mocks: {
+    resetPasswordForEmail: jest.Mock;
+    verifyOtp: jest.Mock;
+    updateUserById: jest.Mock;
+  };
+}
 
 jest.mock('@supabase/supabase-js', () => {
   const mockResetPasswordForEmail = jest.fn();
@@ -37,8 +46,9 @@ describe('PasswordRecoveryService', () => {
   };
 
   beforeEach(async () => {
-    const supabaseModule = require('@supabase/supabase-js');
-    mocks = supabaseModule.__mocks;
+    const mockedModule =
+      supabaseModule as unknown as MockedPasswordRecoveryModule;
+    mocks = mockedModule.__mocks;
     mocks.resetPasswordForEmail.mockReset();
     mocks.verifyOtp.mockReset();
     mocks.updateUserById.mockReset();

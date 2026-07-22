@@ -6,6 +6,14 @@ import {
 import { PrismaService } from '../../prisma.service'; // Adjust the import path as needed
 import { UpdateProfileDto } from '../dto/update-profile.dto';
 
+interface ProfileUpdateData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  city?: string;
+  birthDate?: Date;
+}
+
 @Injectable()
 export class UpdateProfileService {
   constructor(private prisma: PrismaService) {}
@@ -28,7 +36,7 @@ export class UpdateProfileService {
       }
 
       // 2. Map the Spanish DTO keys to your Prisma schema column names
-      const dataToUpdate: any = {};
+      const dataToUpdate: ProfileUpdateData = {};
       if (nombres) dataToUpdate.firstName = nombres;
       if (apellidos) dataToUpdate.lastName = apellidos;
       if (telefono) dataToUpdate.phone = telefono;

@@ -4,12 +4,12 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 import { GeneratePresignedUrlDto } from '../dto/generate-presigned-url.dto';
 
 @Injectable()
 export class GeneratePresignedUrlService {
-  private supabase: SupabaseClient;
+  private supabase: ReturnType<typeof createClient>;
   private readonly BUCKET_NAME: string;
 
   constructor(private configService: ConfigService) {

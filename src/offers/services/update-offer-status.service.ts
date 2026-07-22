@@ -76,7 +76,7 @@ export class UpdateOfferStatusService {
   ) {
     let subject = '';
     let htmlContent = '';
-    const title = offerDetails.title || 'Tu oferta';
+    const title = (offerDetails.title as string) || 'Tu oferta';
 
     switch (status) {
       case EntityStatus.ACTIVE:
