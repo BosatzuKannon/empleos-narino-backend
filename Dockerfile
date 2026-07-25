@@ -16,7 +16,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
 # Install ALL dependencies (including devDependencies needed for building)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
 
 # Generate the Prisma Client
 RUN pnpm dlx prisma generate
@@ -46,7 +46,7 @@ COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
 # Install ONLY production dependencies to keep the image small
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --config.ignore-scripts=false
 
 # Generate the Prisma Client for the production environment
 RUN pnpm dlx prisma generate
