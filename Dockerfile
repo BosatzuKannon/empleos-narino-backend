@@ -10,7 +10,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 # Copy package management files first to cache dependencies
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Copy the Prisma schema folder
 COPY prisma ./prisma/
@@ -43,7 +43,7 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 # Copy package management files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Copy the Prisma schema folder again
 COPY prisma ./prisma/
