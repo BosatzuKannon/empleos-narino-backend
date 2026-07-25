@@ -1,3 +1,9 @@
+packages:
+  - "."
+
 allowBuilds:
-  '@prisma/engines': true
-  prisma: true
+  '0': '@prisma/engines'
+  '1': prisma
+  '2': unrs-resolver
+  '@prisma/engines': false
+  prisma: false
