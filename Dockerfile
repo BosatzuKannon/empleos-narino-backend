@@ -15,8 +15,11 @@ COPY package.json pnpm-lock.yaml ./
 # Copy the Prisma schema folder
 COPY prisma ./prisma/
 
+# Force pnpm to allow scripts (required for Prisma)
+RUN pnpm config set ignore-scripts false
+
 # Install ALL dependencies (including devDependencies needed for building)
-RUN pnpm install --frozen-lockfile --config.ignore-scripts=false
+RUN pnpm install --frozen-lockfile
 
 # Generate the Prisma Client
 RUN pnpm dlx prisma generate
@@ -45,8 +48,11 @@ COPY package.json pnpm-lock.yaml ./
 # Copy the Prisma schema folder again
 COPY prisma ./prisma/
 
+# Force pnpm to allow scripts (required for Prisma)
+RUN pnpm config set ignore-scripts false
+
 # Install ONLY production dependencies to keep the image small
-RUN pnpm install --frozen-lockfile --prod --config.ignore-scripts=false
+RUN pnpm install --frozen-lockfile --prod
 
 # Generate the Prisma Client for the production environment
 RUN pnpm dlx prisma generate
