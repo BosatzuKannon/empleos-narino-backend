@@ -19,7 +19,7 @@ COPY prisma ./prisma/
 RUN pnpm config set ignore-scripts false
 
 # Install ALL dependencies (including devDependencies needed for building)
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Generate the Prisma Client
 RUN pnpm dlx prisma generate
@@ -52,7 +52,7 @@ COPY prisma ./prisma/
 RUN pnpm config set ignore-scripts false
 
 # Install ONLY production dependencies to keep the image small
-RUN pnpm install --frozen-lockfile --prod
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Generate the Prisma Client for the production environment
 RUN pnpm dlx prisma generate
