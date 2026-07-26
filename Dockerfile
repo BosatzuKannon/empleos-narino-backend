@@ -64,4 +64,7 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Start the application
-CMD ["node", "dist/src/main.js"]
+#CMD ["node", "dist/src/main.js"]
+
+# Run pending migrations against production, then start the application
+CMD ["sh", "-c", "pnpm dlx prisma migrate deploy && node dist/src/main.js"]
