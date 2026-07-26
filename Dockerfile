@@ -67,4 +67,4 @@ EXPOSE 3000
 #CMD ["node", "dist/src/main.js"]
 
 # Run pending migrations against production, then start the application
-CMD ["sh", "-c", "pnpm dlx prisma migrate deploy && node dist/src/main.js"]
+CMD ["sh", "-c", "DATABASE_URL=$DATABASE_URL pnpm dlx prisma migrate deploy && node dist/src/main.js"]
