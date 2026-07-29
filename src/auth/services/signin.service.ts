@@ -7,18 +7,21 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { SignInDto } from '../dto/signin.dto';
 import { createClient } from '@supabase/supabase-js';
+import { PrismaService } from '../../prisma.service';
 
 @Injectable()
 export class SigninService {
   private supabase: ReturnType<typeof createClient>;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private prisma: PrismaService,
+  ) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
     const supabaseKey = this.configService.getOrThrow<string>(
       'SUPABASE_SERVICE_ROLE_KEY',
     );
 
-    // Initialize the Supabase client specifically for server-side auth
     this.supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: false,
@@ -28,7 +31,6 @@ export class SigninService {
   }
 
   async signIn(signInDto: SignInDto) {
-    // We continue using 'username' from the DTO to represent the email
     const { username, password } = signInDto;
 
     try {
@@ -38,7 +40,6 @@ export class SigninService {
       });
 
       if (error) {
-        // Map Supabase errors to the old Cognito exception handling flow
         if (error.message.includes('Invalid login credentials')) {
           throw new UnauthorizedException({
             message: 'Nombre de usuario o contraseña incorrectos.',
@@ -60,8 +61,26 @@ export class SigninService {
         });
       }
 
-      // Format the Supabase session to perfectly match the legacy AWS Cognito structure
-      // This prevents you from having to rewrite frontend token parsing logic!
+      // 1. Get the user's role from Prisma using the Supabase UID
+      const supabaseUid = data.user.id;
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: supabaseUid },
+      });
+
+      // 2. Ensure the role is in Supabase user_metadata so the JWT carries it
+      const currentMeta = data.user.user_metadata || {};
+      if (dbUser && currentMeta.role !== dbUser.role) {
+        try {
+          await this.supabase.auth.admin.updateUserById(supabaseUid, {
+            user_metadata: { ...currentMeta, role: dbUser.role },
+          });
+        } catch (metaError) {
+          console.warn('No se pudo actualizar user_metadata:', metaError);
+        }
+      }
+
+      const role = dbUser?.role || 'CANDIDATE';
+
       return {
         statusCode: 200,
         message: 'Inicio de sesión exitoso',
@@ -71,11 +90,20 @@ export class SigninService {
           ExpiresIn: data.session.expires_in,
           TokenType: data.session.token_type,
         },
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          emailVerified: data.user.email_confirmed_at ? true : false,
+          nombre: dbUser?.firstName || currentMeta.firstName || '',
+          apellido: dbUser?.lastName || currentMeta.lastName || '',
+          role: role,
+          telefono: dbUser?.phone || currentMeta.phone || '',
+          ciudad: dbUser?.city || '',
+        },
       };
     } catch (error) {
       console.error('Error durante el inicio de sesión:', error);
 
-      // Pass through our custom HTTP exceptions
       if (
         error instanceof UnauthorizedException ||
         error instanceof ForbiddenException ||

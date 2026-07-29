@@ -44,13 +44,23 @@ export class SignupService {
     } = signUpDto;
 
     try {
-      // 1. Create and auto-confirm user in Supabase Auth Cloud
+      // 1. Determine the final role for metadata
+      const finalRole =
+        user_type === 'COMPANY_ADMIN'
+          ? UserRole.COMPANY_ADMIN
+          : UserRole.CANDIDATE;
+
+      // 2. Create and auto-confirm user in Supabase Auth Cloud
       const { data: authData, error: authError } =
         await this.supabaseAdmin.auth.admin.createUser({
           email,
           password,
-          email_confirm: true, // Instantly verifies email
-          user_metadata: { firstName: nombres, lastName: apellidos },
+          email_confirm: true,
+          user_metadata: {
+            firstName: nombres,
+            lastName: apellidos,
+            role: finalRole,
+          },
         });
 
       if (authError || !authData.user) {
@@ -61,12 +71,6 @@ export class SignupService {
       }
 
       const supabaseUid = authData.user.id;
-
-      // 2. Map frontend role to our explicit database UserRole enum
-      const finalRole =
-        user_type === 'COMPANY_ADMIN'
-          ? UserRole.COMPANY_ADMIN
-          : UserRole.CANDIDATE;
 
       // 3. Complete the rich user profile via Prisma
       // Note: The database trigger created the baseline row, so we update the extended fields here.
