@@ -5,13 +5,12 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 describe('GetOffersByUserService', () => {
   let service: GetOffersByUserService;
-  let prismaMock: { jobVacancy: { findMany: jest.Mock } };
+  let prismaMock: { company: { findFirst: jest.Mock }; jobVacancy: { findMany: jest.Mock } };
 
   beforeEach(async () => {
     prismaMock = {
-      jobVacancy: {
-        findMany: jest.fn(),
-      },
+      company: { findFirst: jest.fn() },
+      jobVacancy: { findMany: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -25,7 +24,10 @@ describe('GetOffersByUserService', () => {
   });
 
   it('debería obtener ofertas de un usuario', async () => {
-    const mockOffers = [{ id: '1', companyId: 'USER#123', title: 'Dev' }];
+    const mockCompany = { id: 'company-789', ownerId: 'USER#123' };
+    const mockOffers = [{ id: '1', companyId: 'company-789', title: 'Dev', company: mockCompany }];
+
+    prismaMock.company.findFirst.mockResolvedValueOnce(mockCompany);
     prismaMock.jobVacancy.findMany.mockResolvedValueOnce(mockOffers);
 
     const result = await service.getOffersByUser('USER#123');
@@ -33,15 +35,30 @@ describe('GetOffersByUserService', () => {
     expect(result.statusCode).toBe(200);
     expect(result.count).toBe(1);
     expect(result.data).toEqual(mockOffers);
+    expect(prismaMock.company.findFirst).toHaveBeenCalledWith({
+      where: { ownerId: 'USER#123' },
+    });
     expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledTimes(1);
     expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledWith({
-      where: { companyId: 'USER#123' },
+      where: { companyId: 'company-789' },
       orderBy: { createdAt: 'desc' },
+      include: { company: true },
     });
   });
 
+  it('debería retornar array vacío si no hay empresa', async () => {
+    prismaMock.company.findFirst.mockResolvedValueOnce(null);
+
+    const result = await service.getOffersByUser('USER#456');
+
+    expect(result.statusCode).toBe(200);
+    expect(result.count).toBe(0);
+    expect(result.data).toEqual([]);
+    expect(prismaMock.jobVacancy.findMany).not.toHaveBeenCalled();
+  });
+
   it('debería manejar error de Prisma', async () => {
-    prismaMock.jobVacancy.findMany.mockRejectedValueOnce(new Error('Error'));
+    prismaMock.company.findFirst.mockRejectedValueOnce(new Error('Error'));
     await expect(service.getOffersByUser('123')).rejects.toThrow(
       InternalServerErrorException,
     );

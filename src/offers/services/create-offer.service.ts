@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 
@@ -7,20 +7,20 @@ export class CreateOfferService {
   constructor(private prisma: PrismaService) {}
 
   async createOffer(userId: string, createOfferDto: CreateOfferDto) {
-    // 1. Extract the Spanish fields from the DTO
-    const {
-      titulo,
-      descripcion,
-      ubicacion,
-      salario,
-      tipo_contrato,
-      requisitos,
-      // 'empresa' is likely handled by the companyId relation now,
-      // but you can add it to the mapping below if your schema requires it!
-    } = createOfferDto;
+    const { titulo, descripcion, ubicacion, salario, tipo_contrato, requisitos } = createOfferDto;
 
     try {
-      // 2. Map them strictly to the English Prisma schema properties
+      // Look up the company owned by this user — companyId must reference Company.id, not User.id
+      const company = await this.prisma.company.findFirst({
+        where: { ownerId: userId },
+      });
+
+      if (!company) {
+        throw new NotFoundException(
+          'No se encontró una empresa asociada a este usuario. Debe crear una empresa antes de publicar ofertas.',
+        );
+      }
+
       const offer = await this.prisma.jobVacancy.create({
         data: {
           title: titulo,
@@ -30,7 +30,7 @@ export class CreateOfferService {
           contractType: tipo_contrato,
           requirements: requisitos,
           status: 'ACTIVE',
-          companyId: userId, // I see you adjusted this in your screenshot to link correctly!
+          companyId: company.id,
         },
       });
 
@@ -41,6 +41,8 @@ export class CreateOfferService {
       };
     } catch (error) {
       console.error('Error al crear la oferta:', error);
+
+      if (error instanceof NotFoundException) throw error;
 
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido de Prisma';

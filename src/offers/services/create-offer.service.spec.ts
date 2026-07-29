@@ -6,13 +6,12 @@ import { CreateOfferDto } from '../dto/create-offer.dto';
 
 describe('CreateOfferService', () => {
   let service: CreateOfferService;
-  let prismaMock: { jobVacancy: { create: jest.Mock } };
+  let prismaMock: { company: { findFirst: jest.Mock }; jobVacancy: { create: jest.Mock } };
 
   beforeEach(async () => {
     prismaMock = {
-      jobVacancy: {
-        create: jest.fn(),
-      },
+      company: { findFirst: jest.fn() },
+      jobVacancy: { create: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +29,7 @@ describe('CreateOfferService', () => {
   });
 
   it('debería crear una oferta exitosamente', async () => {
+    const mockCompany = { id: 'company-456', ownerId: 'user-123' };
     const mockCreatedOffer = {
       id: 'test-uuid-1234',
       title: 'Dev',
@@ -39,9 +39,10 @@ describe('CreateOfferService', () => {
       contractType: 'Indefinido',
       requirements: 'Test',
       status: 'ACTIVE',
-      companyId: 'user-123',
+      companyId: 'company-456',
     };
 
+    prismaMock.company.findFirst.mockResolvedValueOnce(mockCompany);
     prismaMock.jobVacancy.create.mockResolvedValueOnce(mockCreatedOffer);
 
     const dto: CreateOfferDto = {
@@ -58,6 +59,9 @@ describe('CreateOfferService', () => {
 
     expect(result.statusCode).toBe(201);
     expect(result.offer).toEqual(mockCreatedOffer);
+    expect(prismaMock.company.findFirst).toHaveBeenCalledWith({
+      where: { ownerId: 'user-123' },
+    });
     expect(prismaMock.jobVacancy.create).toHaveBeenCalledTimes(1);
     expect(prismaMock.jobVacancy.create).toHaveBeenCalledWith({
       data: {
@@ -68,13 +72,31 @@ describe('CreateOfferService', () => {
         contractType: 'Indefinido',
         requirements: 'Test',
         status: 'ACTIVE',
-        companyId: 'user-123',
+        companyId: 'company-456',
       },
     });
   });
 
+  it('debería lanzar NotFoundException si no hay empresa', async () => {
+    prismaMock.company.findFirst.mockResolvedValueOnce(null);
+
+    const dto: CreateOfferDto = {
+      titulo: 'Dev',
+      empresa: 'Fucsol',
+      ubicacion: 'Pasto',
+      salario: 1000,
+      tipo_contrato: 'Indefinido',
+      descripcion: 'Test',
+      requisitos: 'Test',
+    };
+
+    await expect(
+      service.createOffer('user-123', dto),
+    ).rejects.toThrow('No se encontró una empresa asociada a este usuario');
+  });
+
   it('debería lanzar InternalServerErrorException si Prisma falla', async () => {
-    prismaMock.jobVacancy.create.mockRejectedValueOnce(new Error('Fallo DB'));
+    prismaMock.company.findFirst.mockRejectedValueOnce(new Error('Fallo DB'));
 
     await expect(
       service.createOffer('user-123', {} as CreateOfferDto),

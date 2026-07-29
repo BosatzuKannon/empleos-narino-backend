@@ -1,5 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PrismaService } from '../../prisma.service'; // Adjust path if needed
+import { PrismaService } from '../../prisma.service';
 
 @Injectable()
 export class GetOffersByUserService {
@@ -7,10 +7,19 @@ export class GetOffersByUserService {
 
   async getOffersByUser(userId: string) {
     try {
-      // Replaced DynamoDB Scan with Prisma findMany
+      // companyId references Company.id, not User.id — find the company first
+      const company = await this.prisma.company.findFirst({
+        where: { ownerId: userId },
+      });
+
+      if (!company) {
+        return { statusCode: 200, count: 0, data: [] };
+      }
+
       const offers = await this.prisma.jobVacancy.findMany({
-        where: { companyId: userId }, // Change to company: { userId } if needed by your schema
+        where: { companyId: company.id },
         orderBy: { createdAt: 'desc' },
+        include: { company: true },
       });
 
       return {
