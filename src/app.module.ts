@@ -6,10 +6,12 @@ import { ConfigModule } from '@nestjs/config';
 import { ProfileModule } from './profile/profile.module';
 import { SettingsModule } from './settings/settings.module';
 import { OffersModule } from './offers/offers.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    CommonModule,
     AuthModule,
     ProfileModule,
     SettingsModule,

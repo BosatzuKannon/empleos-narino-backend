@@ -3,17 +3,16 @@ import {
   Post,
   Get,
   Body,
-  Headers,
-  UnauthorizedException,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
 import { RegisterPushTokenService } from './services/register-push-token.service';
 import { CheckAppVersionService } from './services/check-app-version.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 
-interface JwtPayload {
-  sub?: string;
-}
-
+@UseGuards(JwtAuthGuard)
 @Controller('settings')
 export class SettingsController {
   constructor(
@@ -21,6 +20,7 @@ export class SettingsController {
     private readonly checkAppVersionService: CheckAppVersionService,
   ) {}
 
+  @Public()
   @Get('app-version')
   async checkAppVersion() {
     return this.checkAppVersionService.checkAppVersion();
@@ -28,34 +28,13 @@ export class SettingsController {
 
   @Post('push-token')
   async registerPushToken(
-    @Headers('authorization') authHeader: string,
+    @Req() req: any,
     @Body() registerPushTokenDto: RegisterPushTokenDto,
   ) {
-    // 1. Verify token exists
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Token de autorización inválido.');
-    }
-
-    try {
-      // 2. Extract the user ID directly from the Supabase JWT
-      const token = authHeader.split(' ')[1];
-      const payloadBase64 = token.split('.')[1];
-      const payload = JSON.parse(
-        Buffer.from(payloadBase64, 'base64').toString('utf-8'),
-      ) as JwtPayload;
-      const userId = payload.sub;
-
-      if (!userId) {
-        throw new UnauthorizedException('El token no contiene un ID válido.');
-      }
-
-      // 3. Pass BOTH arguments to the service, fixing the TS2554 error!
-      return this.registerPushTokenService.registerPushToken(
-        userId,
-        registerPushTokenDto,
-      );
-    } catch {
-      throw new UnauthorizedException('Token inválido o expirado.');
-    }
+    const userId = req.user.userId;
+    return this.registerPushTokenService.registerPushToken(
+      userId,
+      registerPushTokenDto,
+    );
   }
 }

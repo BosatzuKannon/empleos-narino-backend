@@ -1,0 +1,9 @@
+import { Module, Global } from '@nestjs/common';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+@Global()
+@Module({
+  providers: [JwtAuthGuard],
+  exports: [JwtAuthGuard],
+})
+export class CommonModule {}

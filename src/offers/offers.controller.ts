@@ -1,4 +1,6 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
 import { CreateOfferService } from './services/create-offer.service';
 import { GetActiveOffersService } from './services/get-active-offers.service';
 import { GetOffersByUserService } from './services/get-offers-by-user.service';
@@ -15,6 +17,7 @@ import { GeneratePresignedUrlDto } from './dto/generate-presigned-url.dto';
 import { ApplyToJobDto } from './dto/apply-to-job.dto';
 import { UpdateApplicationStatusDto } from './dto/update-application-status.dto';
 
+@UseGuards(JwtAuthGuard)
 @Controller('offers')
 export class OffersController {
   constructor(
@@ -37,6 +40,7 @@ export class OffersController {
     return this.createOfferService.createOffer(cognitoId, createOfferDto);
   }
 
+  @Public()
   @Get('getActiveOffers')
   async getActiveOffers() {
     return this.getActiveOffersService.getActiveOffers();

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SigninService } from './signin.service';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma.service';
 import {
   UnauthorizedException,
   ForbiddenException,
@@ -10,28 +11,44 @@ import * as supabaseModule from '@supabase/supabase-js';
 
 interface MockedSigninModule {
   __mockSignInWithPassword: jest.Mock;
+  __mockUpdateUserById: jest.Mock;
 }
 
 jest.mock('@supabase/supabase-js', () => {
   const mockSignInWithPassword = jest.fn();
+  const mockUpdateUserById = jest.fn();
   return {
     createClient: jest.fn(() => ({
       auth: {
         signInWithPassword: mockSignInWithPassword,
+        admin: {
+          updateUserById: mockUpdateUserById,
+        },
       },
     })),
     __mockSignInWithPassword: mockSignInWithPassword,
+    __mockUpdateUserById: mockUpdateUserById,
   };
 });
 
 describe('SigninService', () => {
   let service: SigninService;
   let mockSignInWithPassword: jest.Mock;
+  let mockUpdateUserById: jest.Mock;
+  let prismaMock: {
+    user: { findUnique: jest.Mock };
+  };
 
   beforeEach(async () => {
     const mockedModule = supabaseModule as unknown as MockedSigninModule;
     mockSignInWithPassword = mockedModule.__mockSignInWithPassword;
+    mockUpdateUserById = mockedModule.__mockUpdateUserById;
     mockSignInWithPassword.mockReset();
+    mockUpdateUserById.mockReset();
+
+    prismaMock = {
+      user: { findUnique: jest.fn() },
+    };
 
     const mockConfigService = {
       getOrThrow: jest.fn((key: string) => {
@@ -47,6 +64,7 @@ describe('SigninService', () => {
       providers: [
         SigninService,
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -63,9 +81,15 @@ describe('SigninService', () => {
       password: 'Password123!',
     };
 
-    it('debería iniciar sesión exitosamente y devolver el token', async () => {
+    it('debería iniciar sesión exitosamente y devolver token + usuario', async () => {
       mockSignInWithPassword.mockResolvedValueOnce({
         data: {
+          user: {
+            id: 'mock-user-id',
+            email: 'prueba@empleosnarino.com',
+            email_confirmed_at: '2025-01-01T00:00:00Z',
+            user_metadata: { firstName: 'Carlos', lastName: 'Jaramillo' },
+          },
           session: {
             access_token: 'mock-jwt-token',
             refresh_token: 'mock-refresh-token',
@@ -74,6 +98,15 @@ describe('SigninService', () => {
           },
         },
         error: null,
+      });
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 'mock-user-id',
+        email: 'prueba@empleosnarino.com',
+        firstName: 'Carlos',
+        lastName: 'Jaramillo',
+        role: 'CANDIDATE',
+        phone: '3001234567',
+        city: 'Pasto',
       });
 
       const result = await service.signIn(mockDto);
@@ -87,8 +120,21 @@ describe('SigninService', () => {
           ExpiresIn: 3600,
           TokenType: 'bearer',
         },
+        user: {
+          id: 'mock-user-id',
+          email: 'prueba@empleosnarino.com',
+          emailVerified: true,
+          nombre: 'Carlos',
+          apellido: 'Jaramillo',
+          role: 'CANDIDATE',
+          telefono: '3001234567',
+          ciudad: 'Pasto',
+        },
       });
       expect(mockSignInWithPassword).toHaveBeenCalledTimes(1);
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'mock-user-id' },
+      });
     });
 
     it('debería lanzar UnauthorizedException si las credenciales son incorrectas', async () => {
