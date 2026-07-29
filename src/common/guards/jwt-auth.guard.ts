@@ -7,6 +7,14 @@ import {
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
+interface JwtPayload {
+  sub?: string;
+  email?: string;
+  phone?: string;
+  user_metadata?: Record<string, unknown>;
+  app_metadata?: Record<string, unknown>;
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -35,7 +43,7 @@ export class JwtAuthGuard implements CanActivate {
       const payloadJson = Buffer.from(payloadBase64, 'base64').toString(
         'utf-8',
       );
-      const payload = JSON.parse(payloadJson) as { sub?: string };
+      const payload = JSON.parse(payloadJson) as JwtPayload;
 
       if (!payload.sub) {
         throw new UnauthorizedException(
