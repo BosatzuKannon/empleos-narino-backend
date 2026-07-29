@@ -37,6 +37,7 @@ describe('SigninService', () => {
   let mockUpdateUserById: jest.Mock;
   let prismaMock: {
     user: { findUnique: jest.Mock };
+    company: { findFirst: jest.Mock };
   };
 
   beforeEach(async () => {
@@ -48,6 +49,7 @@ describe('SigninService', () => {
 
     prismaMock = {
       user: { findUnique: jest.fn() },
+      company: { findFirst: jest.fn() },
     };
 
     const mockConfigService = {
@@ -129,6 +131,7 @@ describe('SigninService', () => {
           role: 'CANDIDATE',
           telefono: '3001234567',
           ciudad: 'Pasto',
+          companyName: '',
         },
       });
       expect(mockSignInWithPassword).toHaveBeenCalledTimes(1);

@@ -81,6 +81,16 @@ export class SigninService {
 
       const role = dbUser?.role || 'CANDIDATE';
 
+      // 3. Include company name for COMPANY_ADMIN users (avoids extra DB queries later)
+      let companyName = '';
+      if (role === 'COMPANY_ADMIN') {
+        const company = await this.prisma.company.findFirst({
+          where: { ownerId: supabaseUid },
+          select: { name: true },
+        });
+        companyName = company?.name || '';
+      }
+
       return {
         statusCode: 200,
         message: 'Inicio de sesión exitoso',
@@ -99,6 +109,7 @@ export class SigninService {
           role: role,
           telefono: dbUser?.phone || currentMeta.phone || '',
           ciudad: dbUser?.city || '',
+          companyName: companyName,
         },
       };
     } catch (error) {
