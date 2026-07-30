@@ -7,7 +7,7 @@ export class CreateOfferService {
   constructor(private prisma: PrismaService) {}
 
   async createOffer(userId: string, createOfferDto: CreateOfferDto) {
-    const { titulo, descripcion, ubicacion, salario, tipo_contrato, requisitos } = createOfferDto;
+    const { titulo, descripcion, ubicacion, salario, tipo_contrato, requisitos, cupos } = createOfferDto;
 
     try {
       // Look up the company owned by this user — companyId must reference Company.id, not User.id
@@ -28,7 +28,8 @@ export class CreateOfferService {
           location: ubicacion,
           salary: salario,
           contractType: tipo_contrato,
-          requirements: requisitos,
+          requirements: requisitos ?? '',
+          availablePositions: cupos,
           status: 'ACTIVE',
           companyId: company.id,
         },

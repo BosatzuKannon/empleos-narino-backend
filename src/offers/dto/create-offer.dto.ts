@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, Min, IsOptional } from 'class-validator';
 
 export class CreateOfferDto {
   @IsString()
@@ -26,6 +26,10 @@ export class CreateOfferDto {
   descripcion: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'Los requisitos son obligatorios' })
-  requisitos: string;
+  @IsOptional()
+  requisitos?: string;
+
+  @IsNumber()
+  @Min(1, { message: 'Debe haber al menos 1 cupo disponible' })
+  cupos: number;
 }
