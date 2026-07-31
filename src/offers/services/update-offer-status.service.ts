@@ -1,26 +1,22 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma.service';
-import sgMail from '@sendgrid/mail';
+import { EmailService } from '../../email/email.service';
 import { UpdateOfferStatusDto } from '../dto/update-offer-status.dto';
 import { EntityStatus } from '@prisma/client';
 
+const STATUS_MAP: Record<string, EntityStatus> = {
+  verificando_pago: EntityStatus.PENDING_PAYMENT,
+  activo: EntityStatus.ACTIVE,
+  inactivo: EntityStatus.INACTIVE,
+  pago_incorrecto: EntityStatus.PENDING_PAYMENT,
+};
+
 @Injectable()
 export class UpdateOfferStatusService {
-  private readonly SENDER_EMAIL: string;
-
   constructor(
-    private configService: ConfigService,
     private readonly prisma: PrismaService,
-  ) {
-    this.SENDER_EMAIL = this.configService.getOrThrow<string>(
-      'SENDGRID_SENDER_EMAIL',
-    );
-
-    const sendgridApiKey =
-      this.configService.getOrThrow<string>('SENDGRID_API_KEY');
-    sgMail.setApiKey(sendgridApiKey);
-  }
+    private readonly emailService: EmailService,
+  ) {}
 
   async updateOfferStatus(
     offerId: string,
@@ -28,12 +24,13 @@ export class UpdateOfferStatusService {
     dto: UpdateOfferStatusDto,
   ) {
     const { status, creatorEmail } = dto;
+    const targetStatus = STATUS_MAP[status];
 
     try {
       const updatedOffer = await this.prisma.jobVacancy.update({
         where: { id: offerId },
         data: {
-          status: status as EntityStatus,
+          status: targetStatus,
         },
       });
 
@@ -43,14 +40,14 @@ export class UpdateOfferStatusService {
         EntityStatus.INACTIVE,
         EntityStatus.PENDING_PAYMENT,
       ];
-      const shouldNotify = notifyStatuses.includes(status as EntityStatus);
+      const shouldNotify = notifyStatuses.includes(targetStatus);
 
       if (creatorEmail && shouldNotify && updatedOffer) {
-        await this.sendOfferStatusUpdateEmail(
-          creatorEmail,
-          updatedOffer,
-          status as EntityStatus,
-        );
+        await this.emailService.sendOfferStatusEmail({
+          to: creatorEmail,
+          offerTitle: updatedOffer.title,
+          status: targetStatus,
+        });
       }
 
       return {
@@ -66,44 +63,6 @@ export class UpdateOfferStatusService {
         message: 'Error interno del servidor al actualizar el estado.',
         error: error instanceof Error ? error.message : 'Error desconocido',
       });
-    }
-  }
-
-  private async sendOfferStatusUpdateEmail(
-    to: string,
-    offerDetails: Record<string, any>,
-    status: EntityStatus,
-  ) {
-    let subject = '';
-    let htmlContent = '';
-    const title = (offerDetails.title as string) || 'Tu oferta';
-
-    switch (status) {
-      case EntityStatus.ACTIVE:
-        subject = `✅ Tu oferta "${title}" ha sido APROBADA y está activa`;
-        htmlContent = `<p>Hola, tu pago ha sido verificado y tu oferta <strong>${title}</strong> ya está visible.</p>`;
-        break;
-      case EntityStatus.PENDING_PAYMENT:
-        subject = `⚠️ Problema con el pago de tu oferta "${title}"`;
-        htmlContent = `<p>Hola, detectamos un problema con el comprobante de pago de tu oferta.</p>`;
-        break;
-      case EntityStatus.INACTIVE:
-        subject = `⏸️ Tu oferta "${title}" ha sido pausada/inactivada`;
-        htmlContent = `<p>Hola, la oferta <strong>${title}</strong> ya no está recibiendo postulaciones.</p>`;
-        break;
-      default:
-        return;
-    }
-
-    try {
-      await sgMail.send({
-        to,
-        from: this.SENDER_EMAIL,
-        subject,
-        html: htmlContent,
-      });
-    } catch (error) {
-      console.error('Error enviando correo de SendGrid:', error);
     }
   }
 }

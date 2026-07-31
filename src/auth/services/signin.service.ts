@@ -67,6 +67,14 @@ export class SigninService {
         where: { id: supabaseUid },
       });
 
+      // 1.1. Accounts created via signup must verify their email (OTP) before logging in
+      if (dbUser && !dbUser.isVerified) {
+        throw new ForbiddenException({
+          message:
+            'Debes verificar tu cuenta mediante el código enviado a tu correo electrónico.',
+        });
+      }
+
       // 2. Ensure the role is in Supabase user_metadata so the JWT carries it
       const currentMeta = data.user.user_metadata || {};
       if (dbUser && currentMeta.role !== dbUser.role) {

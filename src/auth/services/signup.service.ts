@@ -7,7 +7,13 @@ import { SignUpDto } from '../dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { PrismaService } from '../../prisma.service';
+import { EmailService } from '../../email/email.service';
 import { UserRole } from '@prisma/client';
+import {
+  generateOtp,
+  hashOtp,
+  OTP_EXPIRATION_MS,
+} from '../../common/utils/otp.util';
 
 @Injectable()
 export class SignupService {
@@ -16,6 +22,7 @@ export class SignupService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private emailService: EmailService,
   ) {
     const supabaseUrl = this.configService.getOrThrow<string>('SUPABASE_URL');
     const supabaseServiceKey = this.configService.getOrThrow<string>(
@@ -74,6 +81,10 @@ export class SignupService {
 
       // 3. Complete the rich user profile via Prisma
       // Note: The database trigger created the baseline row, so we update the extended fields here.
+      // The account starts as unverified (isVerified: false) until the user confirms the OTP code.
+      const otp = generateOtp();
+      const otpExpiresAt = new Date(Date.now() + OTP_EXPIRATION_MS);
+
       await this.prisma.user.update({
         where: { id: supabaseUid },
         data: {
@@ -82,6 +93,9 @@ export class SignupService {
           city: ciudad,
           birthDate: fecha_nacimiento ? new Date(fecha_nacimiento) : null,
           role: finalRole,
+          isVerified: false,
+          otpCode: hashOtp(otp),
+          otpExpiresAt,
         },
       });
 
@@ -95,10 +109,16 @@ export class SignupService {
         });
       }
 
+      // 5. Send the OTP verification email (auth-critical, always sent)
+      await this.emailService.sendOtpEmail({
+        to: email.toLowerCase(),
+        name: nombres,
+        otp,
+      });
+
       return {
         statusCode: 201,
-        message:
-          'Registro exitoso. El usuario puede iniciar sesión inmediatamente.',
+        message: 'Registro exitoso. Revisa tu correo para activar tu cuenta.',
         userId: supabaseUid,
       };
     } catch (error) {

@@ -56,17 +56,20 @@ enum TransactionStatus {
 // -----------------------------------------------------------------------------
 
 model User {
-  id               String   @id @db.Uuid 
-  email            String   @unique
+  id               String    @id @db.Uuid 
+  email            String    @unique
   firstName        String
   lastName         String?
   phone            String?
-  role             UserRole @default(CANDIDATE)
+  role             UserRole  @default(CANDIDATE)
   city             String?
   birthDate        DateTime?
   resume           String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  isVerified       Boolean   @default(true)
+  otpCode          String?
+  otpExpiresAt     DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   devices          Device[]
   companies        Company[]

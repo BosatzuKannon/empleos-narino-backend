@@ -109,6 +109,7 @@ describe('SigninService', () => {
         role: 'CANDIDATE',
         phone: '3001234567',
         city: 'Pasto',
+        isVerified: true,
       });
 
       const result = await service.signIn(mockDto);
@@ -155,6 +156,34 @@ describe('SigninService', () => {
       mockSignInWithPassword.mockResolvedValueOnce({
         data: { session: null, user: null },
         error: { message: 'Email not confirmed' },
+      });
+
+      await expect(service.signIn(mockDto)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('debería lanzar ForbiddenException si la cuenta no está verificada', async () => {
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: 'mock-user-id',
+            email: 'prueba@empleosnarino.com',
+            email_confirmed_at: '2025-01-01T00:00:00Z',
+            user_metadata: { firstName: 'Carlos', lastName: 'Jaramillo' },
+          },
+          session: {
+            access_token: 'mock-jwt-token',
+            refresh_token: 'mock-refresh-token',
+            expires_in: 3600,
+            token_type: 'bearer',
+          },
+        },
+        error: null,
+      });
+      prismaMock.user.findUnique.mockResolvedValueOnce({
+        id: 'mock-user-id',
+        email: 'prueba@empleosnarino.com',
+        role: 'CANDIDATE',
+        isVerified: false,
       });
 
       await expect(service.signIn(mockDto)).rejects.toThrow(ForbiddenException);

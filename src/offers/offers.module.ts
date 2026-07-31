@@ -10,8 +10,10 @@ import { GetOfferApplicationsService } from './services/get-offer-applications.s
 import { UpdateApplicationStatusService } from './services/update-application-status.service';
 import { UpdateOfferStatusService } from './services/update-offer-status.service';
 import { PrismaService } from '../prisma.service';
+import { EmailModule } from '../email/email.module';
 
 @Module({
+  imports: [EmailModule],
   controllers: [OffersController],
   providers: [
     PrismaService,
