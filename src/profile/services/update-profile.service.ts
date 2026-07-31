@@ -12,6 +12,7 @@ interface ProfileUpdateData {
   phone?: string;
   city?: string;
   birthDate?: Date;
+  resume?: string;
 }
 
 @Injectable()
@@ -19,8 +20,14 @@ export class UpdateProfileService {
   constructor(private prisma: PrismaService) {}
 
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
-    const { nombres, apellidos, telefono, fecha_nacimiento, ciudad } =
-      updateProfileDto;
+    const {
+      nombres,
+      apellidos,
+      telefono,
+      fecha_nacimiento,
+      ciudad,
+      resume_url,
+    } = updateProfileDto;
 
     try {
       // 1. Verify the user actually exists first
@@ -41,6 +48,7 @@ export class UpdateProfileService {
       if (apellidos) dataToUpdate.lastName = apellidos;
       if (telefono) dataToUpdate.phone = telefono;
       if (ciudad) dataToUpdate.city = ciudad;
+      if (resume_url !== undefined) dataToUpdate.resume = resume_url;
 
       // Prisma expects a Date object for DateTime columns
       if (fecha_nacimiento) {

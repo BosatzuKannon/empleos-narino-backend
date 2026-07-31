@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNumber, IsOptional, IsString, IsNotEmpty } from 'class-validator';
 
 export class GeneratePresignedUrlDto {
   @IsString()
@@ -12,4 +12,8 @@ export class GeneratePresignedUrlDto {
   @IsString()
   @IsOptional()
   fileCategory?: string;
+
+  @IsNumber()
+  @IsOptional()
+  fileSize?: number;
 }

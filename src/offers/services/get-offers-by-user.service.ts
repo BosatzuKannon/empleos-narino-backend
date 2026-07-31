@@ -19,7 +19,12 @@ export class GetOffersByUserService {
       const offers = await this.prisma.jobVacancy.findMany({
         where: { companyId: company.id },
         orderBy: { createdAt: 'desc' },
-        include: { company: true },
+        include: {
+          company: true,
+          _count: {
+            select: { applications: true },
+          },
+        },
       });
 
       return {

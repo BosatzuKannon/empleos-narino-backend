@@ -26,11 +26,14 @@ export class GeneratePresignedUrlService {
   }
 
   async generatePresignedUrl(dto: GeneratePresignedUrlDto) {
-    const { fileName, fileType, fileCategory = 'images' } = dto;
+    const { fileName, fileType, fileCategory = 'images', fileSize } = dto;
+
+    const MAX_RESUME_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
     interface CategoryConfig {
       folder: string;
       allowedTypes: string[];
+      maxSizeBytes?: number;
       errorMessage: string;
     }
 
@@ -59,14 +62,11 @@ export class GeneratePresignedUrlService {
           'Tipo de archivo no permitido. Solo se permiten imágenes o PDF.',
       },
       resumes: {
-        folder: 'users/resumes',
-        allowedTypes: [
-          'application/pdf',
-          'application/msword',
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        ],
+        folder: 'users/cvs',
+        allowedTypes: ['application/pdf'],
+        maxSizeBytes: MAX_RESUME_SIZE_BYTES,
         errorMessage:
-          'Tipo de archivo no permitido para hojas de vida. Solo PDF o DOC/DOCX.',
+          'Tipo de archivo no permitido para hojas de vida. Solo se aceptan archivos PDF.',
       },
     };
 
@@ -78,6 +78,16 @@ export class GeneratePresignedUrlService {
 
     if (!config.allowedTypes.includes(fileType)) {
       throw new BadRequestException(config.errorMessage);
+    }
+
+    if (
+      config.maxSizeBytes &&
+      fileSize !== undefined &&
+      fileSize > config.maxSizeBytes
+    ) {
+      throw new BadRequestException(
+        `El archivo supera el tamaño máximo permitido de 2 MB.`,
+      );
     }
 
     const timestamp = Date.now();

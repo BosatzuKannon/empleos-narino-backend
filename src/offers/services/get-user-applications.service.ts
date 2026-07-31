@@ -11,8 +11,15 @@ export class GetUserApplicationsService {
         where: {
           userId: userId,
         },
+        orderBy: {
+          appliedAt: 'desc',
+        },
         include: {
-          jobVacancy: true, // Includes the details of the job applied to
+          jobVacancy: {
+            include: {
+              company: true, // Includes the company name of the job applied to
+            },
+          },
         },
       });
 

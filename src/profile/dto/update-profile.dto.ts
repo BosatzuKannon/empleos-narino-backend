@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUrl,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateProfileDto {
   @IsString()
@@ -25,6 +31,9 @@ export class UpdateProfileDto {
   @IsOptional()
   nombre_empresa?: string;
 
+  @ValidateIf(
+    (o) => o.resume_url != null && o.resume_url !== '',
+  )
   @IsUrl({}, { message: 'La URL de la hoja de vida no es válida.' })
   @IsOptional()
   resume_url?: string;

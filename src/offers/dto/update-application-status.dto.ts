@@ -6,6 +6,7 @@ const VALID_APP_STATUSES = [
   'entrevista',
   'rechazada',
   'seleccionado',
+  'cancelada',
 ];
 
 export class UpdateApplicationStatusDto {

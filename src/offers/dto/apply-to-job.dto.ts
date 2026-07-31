@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsUrl } from 'class-validator';
+import { IsString, IsNotEmpty, IsUrl, IsOptional } from 'class-validator';
 
 export class ApplyToJobDto {
   @IsString()
@@ -14,6 +14,6 @@ export class ApplyToJobDto {
   empresa: string;
 
   @IsUrl({}, { message: 'Debe ser una URL válida para la hoja de vida.' })
-  @IsNotEmpty({ message: 'El enlace de la hoja de vida es obligatorio.' })
-  resume_url: string;
+  @IsOptional()
+  resume_url?: string;
 }

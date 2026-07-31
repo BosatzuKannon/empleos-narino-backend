@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Body, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateOfferService } from './services/create-offer.service';
@@ -47,8 +56,8 @@ export class OffersController {
   }
 
   @Get('getOffersByUser/:cognito_id')
-  async getOffersByUser(@Param('cognito_id') cognitoId: string) {
-    return this.getOffersByUserService.getOffersByUser(cognitoId);
+  async getOffersByUser(@Req() req: any) {
+    return this.getOffersByUserService.getOffersByUser(req.user.userId);
   }
 
   @Put('updateOfferStatus/:offer_id/:updated_by')
@@ -71,31 +80,34 @@ export class OffersController {
 
   @Post('applyToJob/:cognito_id')
   async applyToJob(
-    @Param('cognito_id') cognitoId: string,
+    @Req() req: any,
     @Body() applyToJobDto: ApplyToJobDto,
   ) {
-    return this.applyToJobService.applyToJob(cognitoId, applyToJobDto);
+    return this.applyToJobService.applyToJob(req.user.userId, applyToJobDto);
   }
 
   @Get('getUserApplications/:cognito_id')
-  async getUserApplications(@Param('cognito_id') cognitoId: string) {
-    return this.getUserApplicationsService.getUserApplications(cognitoId);
+  async getUserApplications(@Req() req: any) {
+    return this.getUserApplicationsService.getUserApplications(req.user.userId);
   }
 
   @Get('getOfferApplications/:offer_id')
-  async getOfferApplications(@Param('offer_id') offerId: string) {
-    return this.getOfferApplicationsService.getOfferApplications(offerId);
+  async getOfferApplications(@Req() req: any, @Param('offer_id') offerId: string) {
+    return this.getOfferApplicationsService.getOfferApplications(
+      req.user.userId,
+      offerId,
+    );
   }
 
-  @Put('updateApplicationStatus/:cognito_id/:offer_id')
+  @Put('updateApplicationStatus/:application_id')
   async updateApplicationStatus(
-    @Param('cognito_id') cognitoId: string, // ID del candidato
-    @Param('offer_id') offerId: string,
+    @Req() req: any,
+    @Param('application_id') applicationId: string,
     @Body() updateApplicationStatusDto: UpdateApplicationStatusDto,
   ) {
     return this.updateApplicationStatusService.updateApplicationStatus(
-      cognitoId,
-      offerId,
+      req.user.userId,
+      applicationId,
       updateApplicationStatusDto,
     );
   }
