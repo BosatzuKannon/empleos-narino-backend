@@ -72,7 +72,8 @@ model User {
   companies        Company[]
   applications     Application[]
   transactions     Transaction[]
-  serviceOfferings ServiceOffering[] 
+  serviceOfferings ServiceOffering[]
+  preferences      UserPreference?
 }
 
 model Company {
@@ -200,6 +201,24 @@ model Device {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId]) // Makes querying tokens for a specific user blazing fast
+}
+
+// -----------------------------------------------------------------------------
+// FEATURE: USER PREFERENCES (SETTINGS)
+// -----------------------------------------------------------------------------
+
+model UserPreference {
+  id                 String   @id @default(uuid()) @db.Uuid
+  emailTransactional Boolean  @default(true)
+  emailMarketing     Boolean  @default(false)
+  pushNotifications  Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // -----------------------------------------------------------------------------
