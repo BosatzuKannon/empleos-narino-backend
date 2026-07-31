@@ -71,6 +71,13 @@ export class UpdateApplicationStatusService {
 
       const offer = application.jobVacancy;
 
+      if (application.status === ApplicationStatus.CANCELED) {
+        throw new BadRequestException({
+          message:
+            'El candidato ha cancelado su postulación. Esta no puede ser modificada.',
+        });
+      }
+
       if (targetStatus === ApplicationStatus.CANCELED) {
         // Solo el propio candidato puede cancelar su postulación
         if (application.userId !== currentUserId) {
