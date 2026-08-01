@@ -84,30 +84,38 @@ export class UpdateOfferStatusService {
     offerTitle: string,
     offerId: string,
   ): { title: string; body: string; data: Record<string, unknown> } {
+    const data: Record<string, unknown> = {
+      type: 'offer_status',
+      route: '/(tabs)/offers',
+      offerId,
+      offerTitle,
+      status,
+    };
+
     switch (status) {
       case EntityStatus.ACTIVE:
         return {
           title: 'Tu oferta está activa',
           body: `La oferta "${offerTitle}" ya está visible para todos los postulantes. ¡Mucho éxito!`,
-          data: { type: 'offer_status', status, offerId },
+          data,
         };
       case EntityStatus.INACTIVE:
         return {
           title: 'Tu oferta ha sido pausada',
           body: `La oferta "${offerTitle}" ya no está recibiendo postulaciones. Puedes reactivarla cuando lo necesites.`,
-          data: { type: 'offer_status', status, offerId },
+          data,
         };
       case EntityStatus.PENDING_PAYMENT:
         return {
           title: 'Problema con el pago de tu oferta',
           body: `Detectamos un problema con el comprobante de pago de "${offerTitle}". Revisa la información del pago.`,
-          data: { type: 'offer_status', status, offerId },
+          data,
         };
       default:
         return {
           title: 'Actualización de tu oferta',
           body: `La oferta "${offerTitle}" cambió de estado.`,
-          data: { type: 'offer_status', status, offerId },
+          data,
         };
     }
   }

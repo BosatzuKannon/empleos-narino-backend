@@ -57,7 +57,9 @@ export class CreateOfferService {
         body: `${offer.title} — ¡Postúlate ya!`,
         data: {
           type: 'new_offer',
+          route: '/(tabs)',
           offerId: offer.id,
+          offerTitle: offer.title,
           companyName: company.name,
         },
       });

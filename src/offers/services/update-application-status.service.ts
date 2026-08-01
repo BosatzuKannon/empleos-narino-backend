@@ -97,6 +97,8 @@ export class UpdateApplicationStatusService {
 
         await this.sendApplicationPush(
           application.userId,
+          applicationId,
+          offer.id,
           offerTitle,
           ApplicationStatus.CANCELED,
         );
@@ -149,6 +151,8 @@ export class UpdateApplicationStatusService {
 
       await this.sendApplicationPush(
         application.userId,
+        applicationId,
+        offer.id,
         offerTitle,
         targetStatus,
       );
@@ -227,6 +231,8 @@ export class UpdateApplicationStatusService {
 
       await this.sendApplicationPush(
         candidateUserId,
+        applicationId,
+        offer.id,
         offerTitle,
         ApplicationStatus.HIRED,
       );
@@ -250,6 +256,8 @@ export class UpdateApplicationStatusService {
 
         await this.sendApplicationPush(
           app.userId,
+          app.id,
+          offer.id,
           offerTitle,
           ApplicationStatus.REJECTED,
         );
@@ -276,6 +284,8 @@ export class UpdateApplicationStatusService {
 
     await this.sendApplicationPush(
       candidateUserId,
+      applicationId,
+      offer.id,
       offerTitle,
       ApplicationStatus.HIRED,
     );
@@ -289,6 +299,8 @@ export class UpdateApplicationStatusService {
 
   private async sendApplicationPush(
     userId: string,
+    applicationId: string,
+    offerId: string,
     offerTitle: string,
     status: ApplicationStatus,
   ): Promise<void> {
@@ -323,7 +335,14 @@ export class UpdateApplicationStatusService {
     await this.pushNotificationService.sendToUser(userId, {
       title,
       body,
-      data: { type: 'application_status', status, offerTitle },
+      data: {
+        type: 'application_status',
+        route: '/(tabs)/applications',
+        applicationId,
+        offerId,
+        offerTitle,
+        status,
+      },
     });
   }
 }
