@@ -5,12 +5,15 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 describe('RegisterPushTokenService', () => {
   let service: RegisterPushTokenService;
-  let prismaMock: { device: { upsert: jest.Mock } };
+  let prismaMock: {
+    device: { upsert: jest.Mock; deleteMany: jest.Mock };
+  };
 
   beforeEach(async () => {
     prismaMock = {
       device: {
         upsert: jest.fn(),
+        deleteMany: jest.fn(),
       },
     };
 
@@ -33,6 +36,7 @@ describe('RegisterPushTokenService', () => {
     const mockDto = {
       token: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',
       platform: 'android',
+      permission_status: 'granted',
     };
 
     it('debería registrar el push token exitosamente', async () => {
@@ -64,17 +68,49 @@ describe('RegisterPushTokenService', () => {
           userId,
         },
       });
+      expect(prismaMock.device.deleteMany).not.toHaveBeenCalled();
     });
 
-    it('debería devolver mensaje si no se proporciona token', async () => {
+    it('debería eliminar los tokens previos si el permiso es "denied"', async () => {
       const result = await service.registerPushToken(userId, {
-        token: '',
         platform: 'android',
+        permission_status: 'denied',
       });
 
       expect(result).toEqual({
         statusCode: 200,
-        message: 'No push token provided, skipping registration.',
+        message:
+          'Permiso de notificaciones no concedido. Tokens previos eliminados.',
+      });
+      expect(prismaMock.device.deleteMany).toHaveBeenCalledWith({
+        where: { userId },
+      });
+      expect(prismaMock.device.upsert).not.toHaveBeenCalled();
+    });
+
+    it('debería eliminar los tokens previos si el permiso es "undetermined"', async () => {
+      const result = await service.registerPushToken(userId, {
+        platform: 'ios',
+        permission_status: 'undetermined',
+      });
+
+      expect(result.statusCode).toBe(200);
+      expect(prismaMock.device.deleteMany).toHaveBeenCalledWith({
+        where: { userId },
+      });
+      expect(prismaMock.device.upsert).not.toHaveBeenCalled();
+    });
+
+    it('debería eliminar los tokens previos si "granted" sin token', async () => {
+      const result = await service.registerPushToken(userId, {
+        token: '',
+        platform: 'android',
+        permission_status: 'granted',
+      });
+
+      expect(result.statusCode).toBe(200);
+      expect(prismaMock.device.deleteMany).toHaveBeenCalledWith({
+        where: { userId },
       });
       expect(prismaMock.device.upsert).not.toHaveBeenCalled();
     });

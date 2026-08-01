@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { EmailService } from '../../email/email.service';
+import { PushNotificationService } from '../../push-notifications/push-notifications.service';
 import { UpdateApplicationStatusDto } from '../dto/update-application-status.dto';
 import { ApplicationStatus } from '@prisma/client';
 
@@ -30,6 +31,7 @@ export class UpdateApplicationStatusService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async updateApplicationStatus(
@@ -93,6 +95,12 @@ export class UpdateApplicationStatusService {
           status: ApplicationStatus.CANCELED,
         });
 
+        await this.sendApplicationPush(
+          application.userId,
+          offerTitle,
+          ApplicationStatus.CANCELED,
+        );
+
         return {
           statusCode: 200,
           message: 'Postulación cancelada exitosamente.',
@@ -121,6 +129,7 @@ export class UpdateApplicationStatusService {
       if (targetStatus === ApplicationStatus.HIRED) {
         return this.handleHire(
           applicationId,
+          application.userId,
           offer,
           candidateEmail,
           offerTitle,
@@ -137,6 +146,12 @@ export class UpdateApplicationStatusService {
         offerTitle,
         status: targetStatus,
       });
+
+      await this.sendApplicationPush(
+        application.userId,
+        offerTitle,
+        targetStatus,
+      );
 
       return {
         statusCode: 200,
@@ -161,6 +176,7 @@ export class UpdateApplicationStatusService {
 
   private async handleHire(
     applicationId: string,
+    candidateUserId: string,
     offer: { id: string; title: string; availablePositions: number | null },
     candidateEmail: string,
     offerTitle: string,
@@ -209,6 +225,12 @@ export class UpdateApplicationStatusService {
         status: ApplicationStatus.HIRED,
       });
 
+      await this.sendApplicationPush(
+        candidateUserId,
+        offerTitle,
+        ApplicationStatus.HIRED,
+      );
+
       // Avisa a los demás candidatos que quedaron rechazados
       const rejected = await this.prisma.application.findMany({
         where: {
@@ -225,6 +247,12 @@ export class UpdateApplicationStatusService {
           offerTitle,
           status: ApplicationStatus.REJECTED,
         });
+
+        await this.sendApplicationPush(
+          app.userId,
+          offerTitle,
+          ApplicationStatus.REJECTED,
+        );
       }
 
       return {
@@ -246,10 +274,56 @@ export class UpdateApplicationStatusService {
       status: ApplicationStatus.HIRED,
     });
 
+    await this.sendApplicationPush(
+      candidateUserId,
+      offerTitle,
+      ApplicationStatus.HIRED,
+    );
+
     return {
       statusCode: 200,
       message: 'Candidato seleccionado. Quedan cupos disponibles en la oferta.',
       new_status: updatedApplication.status,
     };
+  }
+
+  private async sendApplicationPush(
+    userId: string,
+    offerTitle: string,
+    status: ApplicationStatus,
+  ): Promise<void> {
+    let title = '';
+    let body = '';
+
+    switch (status) {
+      case ApplicationStatus.REVIEWED:
+        title = 'Tu postulación está en revisión';
+        body = `La empresa comenzó a revisar tu hoja de vida para "${offerTitle}". ¡Mucho éxito!`;
+        break;
+      case ApplicationStatus.INTERVIEWING:
+        title = '¡Avanzaste a entrevista!';
+        body = `Tu perfil destacó para "${offerTitle}". ¡Felicidades!`;
+        break;
+      case ApplicationStatus.REJECTED:
+        title = 'Actualización de tu postulación';
+        body = `La empresa continuó con otros candidatos para "${offerTitle}". ¡No te desanimes!`;
+        break;
+      case ApplicationStatus.HIRED:
+        title = '¡Has sido seleccionado!';
+        body = `¡Felicidades! Fuiste elegido para la vacante de "${offerTitle}".`;
+        break;
+      case ApplicationStatus.CANCELED:
+        title = 'Postulación cancelada';
+        body = `Has cancelado tu postulación para "${offerTitle}".`;
+        break;
+      default:
+        return;
+    }
+
+    await this.pushNotificationService.sendToUser(userId, {
+      title,
+      body,
+      data: { type: 'application_status', status, offerTitle },
+    });
   }
 }

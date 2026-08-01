@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UpdateOfferStatusService } from './update-offer-status.service';
 import { PrismaService } from '../../prisma.service';
 import { EmailService } from '../../email/email.service';
+import { PushNotificationService } from '../../push-notifications/push-notifications.service';
 import { InternalServerErrorException } from '@nestjs/common';
 import { EntityStatus } from '@prisma/client';
 
@@ -9,6 +10,7 @@ describe('UpdateOfferStatusService', () => {
   let service: UpdateOfferStatusService;
   let prismaMock: { jobVacancy: { update: jest.Mock } };
   let emailServiceMock: { sendOfferStatusEmail: jest.Mock };
+  let pushNotificationServiceMock: { sendToUser: jest.Mock };
 
   beforeEach(async () => {
     prismaMock = {
@@ -21,11 +23,19 @@ describe('UpdateOfferStatusService', () => {
       sendOfferStatusEmail: jest.fn().mockResolvedValue(undefined),
     };
 
+    pushNotificationServiceMock = {
+      sendToUser: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UpdateOfferStatusService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: EmailService, useValue: emailServiceMock },
+        {
+          provide: PushNotificationService,
+          useValue: pushNotificationServiceMock,
+        },
       ],
     }).compile();
 
@@ -36,7 +46,7 @@ describe('UpdateOfferStatusService', () => {
     jest.clearAllMocks();
   });
 
-  it('debería actualizar estado y enviar correo si aplica', async () => {
+  it('debería actualizar estado y enviar correo y push si aplica', async () => {
     const mockUpdatedOffer = {
       id: 'offer-123',
       title: 'Dev',
@@ -61,9 +71,18 @@ describe('UpdateOfferStatusService', () => {
       offerTitle: 'Dev',
       status: EntityStatus.ACTIVE,
     });
+    expect(pushNotificationServiceMock.sendToUser).toHaveBeenCalledTimes(1);
+    const pushCalls = pushNotificationServiceMock.sendToUser.mock
+      .calls as unknown as Array<
+      [string, { title: string; body: string; data: Record<string, unknown> }]
+    >;
+    expect(pushCalls[0][0]).toBe('admin');
+    expect(pushCalls[0][1].title).toContain('activa');
+    expect(pushCalls[0][1].data.type).toBe('offer_status');
+    expect(pushCalls[0][1].data.offerId).toBe('offer-123');
   });
 
-  it('no debería enviar correo sin creatorEmail', async () => {
+  it('no debería enviar correo sin creatorEmail pero sí push', async () => {
     const mockUpdatedOffer = {
       id: 'offer-123',
       title: 'Dev',
@@ -76,6 +95,7 @@ describe('UpdateOfferStatusService', () => {
     await service.updateOfferStatus('offer-123', 'admin', dto);
 
     expect(emailServiceMock.sendOfferStatusEmail).not.toHaveBeenCalled();
+    expect(pushNotificationServiceMock.sendToUser).toHaveBeenCalledTimes(1);
   });
 
   it('debería manejar error de Prisma', async () => {

@@ -4,18 +4,27 @@ import { RegisterPushTokenDto } from '../dto/register-push-token.dto';
 
 @Injectable()
 export class RegisterPushTokenService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async registerPushToken(
     userId: string,
     registerPushTokenDto: RegisterPushTokenDto,
   ) {
-    const { token, platform } = registerPushTokenDto;
+    const { token, platform, permission_status } = registerPushTokenDto;
 
-    if (!token) {
+    if (permission_status !== 'granted' || !token) {
+      // El usuario no concedió permiso: eliminamos cualquier token previo para
+      // no enviar notificaciones a dispositivos que ya no las permiten.
+      try {
+        await this.prisma.device.deleteMany({ where: { userId } });
+      } catch (error) {
+        console.error('Error al eliminar tokens previos del usuario:', error);
+      }
+
       return {
         statusCode: 200,
-        message: 'No push token provided, skipping registration.',
+        message:
+          'Permiso de notificaciones no concedido. Tokens previos eliminados.',
       };
     }
 

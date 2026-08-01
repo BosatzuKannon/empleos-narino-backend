@@ -1,13 +1,29 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import { PushNotificationService } from '../../push-notifications/push-notifications.service';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 
 @Injectable()
 export class CreateOfferService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private readonly pushNotificationService: PushNotificationService,
+  ) {}
 
   async createOffer(userId: string, createOfferDto: CreateOfferDto) {
-    const { titulo, descripcion, ubicacion, salario, tipo_contrato, requisitos, cupos } = createOfferDto;
+    const {
+      titulo,
+      descripcion,
+      ubicacion,
+      salario,
+      tipo_contrato,
+      requisitos,
+      cupos,
+    } = createOfferDto;
 
     try {
       // Look up the company owned by this user — companyId must reference Company.id, not User.id
@@ -32,6 +48,17 @@ export class CreateOfferService {
           availablePositions: cupos,
           status: 'ACTIVE',
           companyId: company.id,
+        },
+      });
+
+      // Evento C: avisa a todos los candidatos con push habilitado
+      await this.pushNotificationService.sendToCandidates({
+        title: 'Nueva oferta en Empleos Nariño',
+        body: `${offer.title} — ¡Postúlate ya!`,
+        data: {
+          type: 'new_offer',
+          offerId: offer.id,
+          companyName: company.name,
         },
       });
 

@@ -1,12 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CreateOfferService } from './create-offer.service';
 import { PrismaService } from '../../prisma.service';
+import { PushNotificationService } from '../../push-notifications/push-notifications.service';
 import { InternalServerErrorException } from '@nestjs/common';
 import { CreateOfferDto } from '../dto/create-offer.dto';
 
 describe('CreateOfferService', () => {
   let service: CreateOfferService;
-  let prismaMock: { company: { findFirst: jest.Mock }; jobVacancy: { create: jest.Mock } };
+  let prismaMock: {
+    company: { findFirst: jest.Mock };
+    jobVacancy: { create: jest.Mock };
+  };
+  let pushNotificationServiceMock: { sendToCandidates: jest.Mock };
 
   beforeEach(async () => {
     prismaMock = {
@@ -14,22 +19,38 @@ describe('CreateOfferService', () => {
       jobVacancy: { create: jest.fn() },
     };
 
+    pushNotificationServiceMock = {
+      sendToCandidates: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CreateOfferService,
         { provide: PrismaService, useValue: prismaMock },
+        {
+          provide: PushNotificationService,
+          useValue: pushNotificationServiceMock,
+        },
       ],
     }).compile();
 
     service = module.get<CreateOfferService>(CreateOfferService);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('debería estar definido', () => {
     expect(service).toBeDefined();
   });
 
-  it('debería crear una oferta exitosamente', async () => {
-    const mockCompany = { id: 'company-456', ownerId: 'user-123' };
+  it('debería crear una oferta exitosamente y notificar a candidatos', async () => {
+    const mockCompany = {
+      id: 'company-456',
+      ownerId: 'user-123',
+      name: 'Fucsol',
+    };
     const mockCreatedOffer = {
       id: 'test-uuid-1234',
       title: 'Dev',
@@ -75,6 +96,16 @@ describe('CreateOfferService', () => {
         companyId: 'company-456',
       },
     });
+    expect(pushNotificationServiceMock.sendToCandidates).toHaveBeenCalledTimes(
+      1,
+    );
+    const pushCalls = pushNotificationServiceMock.sendToCandidates.mock
+      .calls as unknown as Array<
+      [{ title: string; body: string; data: Record<string, unknown> }]
+    >;
+    expect(pushCalls[0][0].title).toBe('Nueva oferta en Empleos Nariño');
+    expect(pushCalls[0][0].body).toContain('Dev');
+    expect(pushCalls[0][0].data.offerId).toBe('test-uuid-1234');
   });
 
   it('debería lanzar NotFoundException si no hay empresa', async () => {
@@ -90,9 +121,9 @@ describe('CreateOfferService', () => {
       requisitos: 'Test',
     };
 
-    await expect(
-      service.createOffer('user-123', dto),
-    ).rejects.toThrow('No se encontró una empresa asociada a este usuario');
+    await expect(service.createOffer('user-123', dto)).rejects.toThrow(
+      'No se encontró una empresa asociada a este usuario',
+    );
   });
 
   it('debería lanzar InternalServerErrorException si Prisma falla', async () => {

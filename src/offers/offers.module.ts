@@ -11,9 +11,10 @@ import { UpdateApplicationStatusService } from './services/update-application-st
 import { UpdateOfferStatusService } from './services/update-offer-status.service';
 import { PrismaService } from '../prisma.service';
 import { EmailModule } from '../email/email.module';
+import { PushNotificationsModule } from '../push-notifications/push-notifications.module';
 
 @Module({
-  imports: [EmailModule],
+  imports: [EmailModule, PushNotificationsModule],
   controllers: [OffersController],
   providers: [
     PrismaService,

@@ -1,6 +1,7 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 import { EmailService } from '../../email/email.service';
+import { PushNotificationService } from '../../push-notifications/push-notifications.service';
 import { UpdateOfferStatusDto } from '../dto/update-offer-status.dto';
 import { EntityStatus } from '@prisma/client';
 
@@ -16,6 +17,7 @@ export class UpdateOfferStatusService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async updateOfferStatus(
@@ -42,12 +44,23 @@ export class UpdateOfferStatusService {
       ];
       const shouldNotify = notifyStatuses.includes(targetStatus);
 
-      if (creatorEmail && shouldNotify && updatedOffer) {
-        await this.emailService.sendOfferStatusEmail({
-          to: creatorEmail,
-          offerTitle: updatedOffer.title,
-          status: targetStatus,
-        });
+      if (shouldNotify && updatedOffer) {
+        if (creatorEmail) {
+          await this.emailService.sendOfferStatusEmail({
+            to: creatorEmail,
+            offerTitle: updatedOffer.title,
+            status: targetStatus,
+          });
+        }
+
+        await this.pushNotificationService.sendToUser(
+          updatedBy,
+          this.buildOfferStatusPush(
+            targetStatus,
+            updatedOffer.title,
+            updatedOffer.id,
+          ),
+        );
       }
 
       return {
@@ -63,6 +76,39 @@ export class UpdateOfferStatusService {
         message: 'Error interno del servidor al actualizar el estado.',
         error: error instanceof Error ? error.message : 'Error desconocido',
       });
+    }
+  }
+
+  private buildOfferStatusPush(
+    status: EntityStatus,
+    offerTitle: string,
+    offerId: string,
+  ): { title: string; body: string; data: Record<string, unknown> } {
+    switch (status) {
+      case EntityStatus.ACTIVE:
+        return {
+          title: 'Tu oferta está activa',
+          body: `La oferta "${offerTitle}" ya está visible para todos los postulantes. ¡Mucho éxito!`,
+          data: { type: 'offer_status', status, offerId },
+        };
+      case EntityStatus.INACTIVE:
+        return {
+          title: 'Tu oferta ha sido pausada',
+          body: `La oferta "${offerTitle}" ya no está recibiendo postulaciones. Puedes reactivarla cuando lo necesites.`,
+          data: { type: 'offer_status', status, offerId },
+        };
+      case EntityStatus.PENDING_PAYMENT:
+        return {
+          title: 'Problema con el pago de tu oferta',
+          body: `Detectamos un problema con el comprobante de pago de "${offerTitle}". Revisa la información del pago.`,
+          data: { type: 'offer_status', status, offerId },
+        };
+      default:
+        return {
+          title: 'Actualización de tu oferta',
+          body: `La oferta "${offerTitle}" cambió de estado.`,
+          data: { type: 'offer_status', status, offerId },
+        };
     }
   }
 }

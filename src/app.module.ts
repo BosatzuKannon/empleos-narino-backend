@@ -7,6 +7,7 @@ import { ProfileModule } from './profile/profile.module';
 import { SettingsModule } from './settings/settings.module';
 import { OffersModule } from './offers/offers.module';
 import { CommonModule } from './common/common.module';
+import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CommonModule } from './common/common.module';
     ProfileModule,
     SettingsModule,
     OffersModule,
+    PushNotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
