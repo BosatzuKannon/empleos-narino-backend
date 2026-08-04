@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ProfileModule } from './profile/profile.module';
 import { SettingsModule } from './settings/settings.module';
 import { OffersModule } from './offers/offers.module';
+import { ServicesModule } from './services/services.module';
 import { CommonModule } from './common/common.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 
@@ -17,6 +18,7 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
     ProfileModule,
     SettingsModule,
     OffersModule,
+    ServicesModule,
     PushNotificationsModule,
   ],
   controllers: [AppController],

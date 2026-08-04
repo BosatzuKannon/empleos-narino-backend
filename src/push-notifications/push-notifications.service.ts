@@ -95,6 +95,38 @@ export class PushNotificationService {
   }
 
   // ---------------------------------------------------------------------------
+  // EVENTO MASIVO (D: nuevo servicio para todas las empresas)
+  // ---------------------------------------------------------------------------
+
+  async sendToCompanies(payload: PushPayload): Promise<void> {
+    try {
+      const companies = await this.prisma.user.findMany({
+        where: { role: 'COMPANY_ADMIN' },
+        include: { preferences: true, devices: true },
+      });
+
+      const tokens: string[] = [];
+      for (const company of companies) {
+        if (company.preferences?.pushNotifications === false) {
+          continue;
+        }
+        tokens.push(...this.getValidTokens(company.devices));
+      }
+
+      if (tokens.length === 0) {
+        this.logger.log(
+          'No hay empresas con tokens push válidos. Se omite el envío masivo.',
+        );
+        return;
+      }
+
+      await this.sendChunked(tokens, payload);
+    } catch (error) {
+      this.logger.error('Error al enviar push masivo a empresas:', error);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // HELPERS
   // ---------------------------------------------------------------------------
 

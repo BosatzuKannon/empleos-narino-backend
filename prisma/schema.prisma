@@ -38,6 +38,17 @@ enum ApplicationStatus {
   CANCELED
 }
 
+enum ServicePriceType {
+  HOURLY
+  FIXED
+  TO_BE_AGREED
+}
+
+enum ServiceStatus {
+  ACTIVE
+  PAUSED
+}
+
 enum TransactionType {
   PAY_PER_POST        
   SUBSCRIPTION        
@@ -75,7 +86,7 @@ model User {
   companies        Company[]
   applications     Application[]
   transactions     Transaction[]
-  serviceOfferings ServiceOffering[]
+  services         Service[]
   preferences      UserPreference?
 }
 
@@ -166,27 +177,46 @@ model Transaction {
   subscriptionId   String?  @db.Uuid
   subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])
   
-  serviceId        String?  @db.Uuid
-  serviceOffering  ServiceOffering? @relation(fields: [serviceId], references: [id])
+  serviceId        String?  @unique @db.Uuid
+  service          Service? @relation(fields: [serviceId], references: [id])
 }
 
 // -----------------------------------------------------------------------------
-// FUTURE FEATURE: USER SERVICES
+// USER SERVICES (talent marketplace)
 // -----------------------------------------------------------------------------
 
-model ServiceOffering {
-  id             String       @id @default(uuid()) @db.Uuid
-  title          String
-  description    String
-  price          Decimal?     @db.Decimal(10, 2)
-  status         EntityStatus @default(DRAFT)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+model Service {
+  id           String            @id @default(uuid()) @db.Uuid
+  title        String
+  description  String
+  municipality String
+  price        Decimal?          @db.Decimal(10, 2)
+  priceType    ServicePriceType  @default(FIXED)
+  imageUrl     String?
+  status       ServiceStatus     @default(ACTIVE)
+  viewsCount   Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  userId         String       @db.Uuid
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String            @db.Uuid
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  transactions   Transaction[] 
+  categoryId   String            @db.Uuid
+  category     ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  transaction  Transaction?
+
+  @@index([userId])
+  @@index([categoryId])
+}
+
+model ServiceCategory {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String    @unique
+  services  Service[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 // -----------------------------------------------------------------------------
