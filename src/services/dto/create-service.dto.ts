@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsNumber,
   Min,
+  Max,
   IsOptional,
   IsEnum,
 } from 'class-validator';
@@ -27,6 +28,9 @@ export class CreateServiceDto {
 
   @IsNumber()
   @Min(0, { message: 'El precio debe ser un número positivo' })
+  @Max(99999999.99, {
+    message: 'El precio supera el valor máximo permitido',
+  })
   @IsOptional()
   price?: number;
 
