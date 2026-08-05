@@ -5,7 +5,10 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 describe('GetOffersByUserService', () => {
   let service: GetOffersByUserService;
-  let prismaMock: { company: { findFirst: jest.Mock }; jobVacancy: { findMany: jest.Mock } };
+  let prismaMock: {
+    company: { findFirst: jest.Mock };
+    jobVacancy: { findMany: jest.Mock };
+  };
 
   beforeEach(async () => {
     prismaMock = {
@@ -25,7 +28,9 @@ describe('GetOffersByUserService', () => {
 
   it('debería obtener ofertas de un usuario', async () => {
     const mockCompany = { id: 'company-789', ownerId: 'USER#123' };
-    const mockOffers = [{ id: '1', companyId: 'company-789', title: 'Dev', company: mockCompany }];
+    const mockOffers = [
+      { id: '1', companyId: 'company-789', title: 'Dev', company: mockCompany },
+    ];
 
     prismaMock.company.findFirst.mockResolvedValueOnce(mockCompany);
     prismaMock.jobVacancy.findMany.mockResolvedValueOnce(mockOffers);

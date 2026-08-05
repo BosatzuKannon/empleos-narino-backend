@@ -29,8 +29,7 @@ export class GetOfferApplicationsService {
 
       if (!company || offer.companyId !== company.id) {
         throw new ForbiddenException({
-          message:
-            'No tienes permisos para ver los postulados de esta oferta.',
+          message: 'No tienes permisos para ver los postulados de esta oferta.',
         });
       }
 

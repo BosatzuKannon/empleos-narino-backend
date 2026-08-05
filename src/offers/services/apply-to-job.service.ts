@@ -28,8 +28,7 @@ export class ApplyToJobService {
 
       if (user.role !== 'CANDIDATE') {
         throw new ForbiddenException({
-          message:
-            'Solo los postulantes pueden aplicar a ofertas de empleo.',
+          message: 'Solo los postulantes pueden aplicar a ofertas de empleo.',
         });
       }
 
@@ -84,7 +83,11 @@ export class ApplyToJobService {
       }
 
       // Prisma P2002 -> duplicate application (unique userId + jobId)
-      if (error instanceof Error && 'code' in error && (error as any).code === 'P2002') {
+      if (
+        error instanceof Error &&
+        'code' in error &&
+        (error as any).code === 'P2002'
+      ) {
         throw new ConflictException({
           message: 'Ya te has postulado a esta oferta anteriormente.',
         });

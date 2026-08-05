@@ -16,9 +16,7 @@ describe('JwtAuthGuard', () => {
     reflector = module.get<Reflector>(Reflector);
   });
 
-  const mockContext = (
-    headers: Record<string, string>,
-  ) => {
+  const mockContext = (headers: Record<string, string>) => {
     return {
       switchToHttp: () => ({
         getRequest: () => ({

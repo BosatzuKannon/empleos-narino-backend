@@ -7,7 +7,10 @@ describe('Public decorator', () => {
       testMethod() {}
     }
 
-    const metadata = Reflect.getMetadata(IS_PUBLIC_KEY, TestController.prototype.testMethod);
+    const metadata = Reflect.getMetadata(
+      IS_PUBLIC_KEY,
+      TestController.prototype.testMethod,
+    );
     expect(metadata).toBe(true);
   });
 });

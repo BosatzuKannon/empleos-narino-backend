@@ -79,10 +79,7 @@ export class OffersController {
   }
 
   @Post('applyToJob/:cognito_id')
-  async applyToJob(
-    @Req() req: any,
-    @Body() applyToJobDto: ApplyToJobDto,
-  ) {
+  async applyToJob(@Req() req: any, @Body() applyToJobDto: ApplyToJobDto) {
     return this.applyToJobService.applyToJob(req.user.userId, applyToJobDto);
   }
 
@@ -92,7 +89,10 @@ export class OffersController {
   }
 
   @Get('getOfferApplications/:offer_id')
-  async getOfferApplications(@Req() req: any, @Param('offer_id') offerId: string) {
+  async getOfferApplications(
+    @Req() req: any,
+    @Param('offer_id') offerId: string,
+  ) {
     return this.getOfferApplicationsService.getOfferApplications(
       req.user.userId,
       offerId,
