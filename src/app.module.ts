@@ -11,6 +11,7 @@ import { CommonModule } from './common/common.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
+import { WompiModule } from './wompi/wompi.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { HealthModule } from './health/health.module';
     ServicesModule,
     PushNotificationsModule,
     HealthModule,
+    WompiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

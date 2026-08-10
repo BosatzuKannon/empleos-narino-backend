@@ -62,6 +62,12 @@ enum TransactionStatus {
   REFUNDED
 }
 
+enum ServicePaymentStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
 // -----------------------------------------------------------------------------
 // MODELS
 // -----------------------------------------------------------------------------
@@ -159,14 +165,14 @@ model Subscription {
 }
 
 model Transaction {
-  id               String            @id @default(uuid()) @db.Uuid
-  wompiReference   String            @unique 
-  wompiId          String?           @unique 
-  amount           Decimal           @db.Decimal(10, 2)
-  status           TransactionStatus @default(PENDING)
-  type             TransactionType
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                 String            @id @default(uuid()) @db.Uuid
+  reference          String            @unique
+  wompiTransactionId String?           @unique
+  amountInCents      Int
+  status             TransactionStatus @default(PENDING)
+  type               TransactionType   @default(PAY_PER_POST)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   userId           String   @db.Uuid
   user             User     @relation(fields: [userId], references: [id])
@@ -177,7 +183,7 @@ model Transaction {
   subscriptionId   String?  @db.Uuid
   subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])
   
-  serviceId        String?  @unique @db.Uuid
+  serviceId        String?  @db.Uuid
   service          Service? @relation(fields: [serviceId], references: [id])
 }
 
@@ -186,17 +192,20 @@ model Transaction {
 // -----------------------------------------------------------------------------
 
 model Service {
-  id           String            @id @default(uuid()) @db.Uuid
-  title        String
-  description  String
-  municipality String
-  price        Decimal?          @db.Decimal(10, 2)
-  priceType    ServicePriceType  @default(FIXED)
-  imageUrl     String?
-  status       ServiceStatus     @default(ACTIVE)
-  viewsCount   Int               @default(0)
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id            String               @id @default(uuid()) @db.Uuid
+  title         String
+  description   String
+  municipality  String
+  price         Decimal?             @db.Decimal(10, 2)
+  priceType     ServicePriceType     @default(FIXED)
+  imageUrl      String?
+  status        ServiceStatus        @default(ACTIVE)
+  viewsCount    Int                  @default(0)
+  paymentStatus ServicePaymentStatus @default(PENDING)
+  expiresAt     DateTime?
+  isFeatured    Boolean              @default(false)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   userId       String            @db.Uuid
   user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -204,7 +213,7 @@ model Service {
   categoryId   String            @db.Uuid
   category     ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  transaction  Transaction?
+  transactions Transaction[]
 
   @@index([userId])
   @@index([categoryId])
