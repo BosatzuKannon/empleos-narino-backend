@@ -9,10 +9,13 @@ import { OffersModule } from './offers/offers.module';
 import { ServicesModule } from './services/services.module';
 import { CommonModule } from './common/common.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     CommonModule,
     AuthModule,
     ProfileModule,
@@ -20,6 +23,7 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
     OffersModule,
     ServicesModule,
     PushNotificationsModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
