@@ -10,6 +10,7 @@ export class GetActiveServicesService {
       const services = await this.prisma.service.findMany({
         where: {
           status: 'ACTIVE',
+          paymentStatus: 'APPROVED',
         },
         orderBy: {
           createdAt: 'desc',

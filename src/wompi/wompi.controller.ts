@@ -4,6 +4,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Logger,
   Post,
   Req,
   UseGuards,
@@ -15,6 +16,8 @@ import { GenerateCheckoutDto } from './dto/generate-checkout.dto';
 
 @Controller('wompi')
 export class WompiController {
+  private readonly logger = new Logger(WompiController.name);
+
   constructor(private readonly wompiService: WompiService) {}
 
   @UseGuards(JwtAuthGuard)
@@ -26,10 +29,16 @@ export class WompiController {
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('webhook')
-  handleWebhook(
-    @Body() body: any,
-    @Headers('x-event-checksum') checksum?: string,
-  ) {
-    return this.wompiService.handleWebhook(body, checksum);
+  handleWebhook(@Body() body: any, @Headers() headers: Record<string, string>) {
+    // Debug: ver EXACTAMENTE qué llega de Wompi y qué esperamos firmar.
+    this.logger.log('--- Webhook Wompi: headers ---');
+    this.logger.log(JSON.stringify(headers));
+    this.logger.log('--- Webhook Wompi: body (crudo) ---');
+    this.logger.log(JSON.stringify(body));
+    this.logger.log(
+      `x-event-checksum header: ${headers['x-event-checksum'] ?? 'NO ENVIADO'}`,
+    );
+
+    return this.wompiService.handleWebhook(body, headers['x-event-checksum']);
   }
 }

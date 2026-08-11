@@ -168,6 +168,8 @@ model Transaction {
   id                 String            @id @default(uuid()) @db.Uuid
   reference          String            @unique
   wompiTransactionId String?           @unique
+  paymentMethodType  String?
+  paymentMethodExtra Json?
   amountInCents      Int
   status             TransactionStatus @default(PENDING)
   type               TransactionType   @default(PAY_PER_POST)

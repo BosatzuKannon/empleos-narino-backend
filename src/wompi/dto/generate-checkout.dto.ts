@@ -1,4 +1,10 @@
-import { IsEnum, IsNotEmpty, IsString, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 export enum PlanType {
   STANDARD = 'STANDARD',
@@ -13,4 +19,10 @@ export class GenerateCheckoutDto {
 
   @IsEnum(PlanType, { message: 'Plan inválido. Use STANDARD o FEATURED.' })
   planType: PlanType;
+
+  // Deep link de la app (EmpleosNarino://...) al que Wompi redirige
+  // tras terminar el flujo de pago en el checkout.
+  @IsOptional()
+  @IsString()
+  redirectUrl?: string;
 }
