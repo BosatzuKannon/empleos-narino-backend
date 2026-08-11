@@ -46,7 +46,7 @@ export class CreateOfferService {
           contractType: tipo_contrato,
           requirements: requisitos ?? '',
           availablePositions: cupos,
-          status: 'ACTIVE',
+          status: 'PENDING_PAYMENT',
           companyId: company.id,
         },
       });

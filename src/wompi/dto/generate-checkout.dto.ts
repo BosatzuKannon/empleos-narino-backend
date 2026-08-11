@@ -11,11 +11,19 @@ export enum PlanType {
   FEATURED = 'FEATURED',
 }
 
+export enum EntityType {
+  SERVICE = 'SERVICE',
+  OFFER = 'OFFER',
+}
+
 export class GenerateCheckoutDto {
+  @IsEnum(EntityType, { message: 'Tipo inválido. Use SERVICE u OFFER.' })
+  entityType: EntityType;
+
   @IsString()
-  @IsNotEmpty({ message: 'El ID del servicio es obligatorio.' })
+  @IsNotEmpty({ message: 'El ID de la publicación es obligatorio.' })
   @IsUUID()
-  serviceId: string;
+  entityId: string;
 
   @IsEnum(PlanType, { message: 'Plan inválido. Use STANDARD o FEATURED.' })
   planType: PlanType;

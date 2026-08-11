@@ -125,6 +125,8 @@ model JobVacancy {
   contractType       String?
   requirements       String?
   availablePositions Int?      @default(1)
+  paymentStatus      ServicePaymentStatus @default(PENDING)
+  isFeatured         Boolean             @default(false)
 
   companyId      String       @db.Uuid
   company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -179,8 +181,8 @@ model Transaction {
   userId           String   @db.Uuid
   user             User     @relation(fields: [userId], references: [id])
 
-  jobId            String?  @db.Uuid
-  jobVacancy       JobVacancy?      @relation(fields: [jobId], references: [id])
+  offerId          String?  @db.Uuid
+  jobVacancy       JobVacancy? @relation(fields: [offerId], references: [id])
   
   subscriptionId   String?  @db.Uuid
   subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])

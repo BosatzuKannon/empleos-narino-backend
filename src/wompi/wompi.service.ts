@@ -9,15 +9,28 @@ import {
 import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
-import { GenerateCheckoutDto, PlanType } from './dto/generate-checkout.dto';
+import {
+  EntityType,
+  GenerateCheckoutDto,
+  PlanType,
+} from './dto/generate-checkout.dto';
 
 const CURRENCY = 'COP';
-const PLAN_AMOUNTS: Record<PlanType, number> = {
+// Precios en centavos de COP (7000 COP = 700_000, 10000 COP = 1_000_000).
+const SERVICE_PLAN_AMOUNTS: Record<PlanType, number> = {
   STANDARD: 500_000,
   FEATURED: 800_000,
 };
-const FEATURED_MIN_CENTS = PLAN_AMOUNTS.FEATURED;
+const OFFER_PLAN_AMOUNTS: Record<PlanType, number> = {
+  STANDARD: 700_000,
+  FEATURED: 1_000_000,
+};
 const SUBSCRIPTION_DAYS = 30;
+
+const PLANS_BY_ENTITY: Record<EntityType, Record<PlanType, number>> = {
+  [EntityType.SERVICE]: SERVICE_PLAN_AMOUNTS,
+  [EntityType.OFFER]: OFFER_PLAN_AMOUNTS,
+};
 
 @Injectable()
 export class WompiService {
@@ -60,21 +73,42 @@ export class WompiService {
   }
 
   async generateCheckout(userId: string, dto: GenerateCheckoutDto) {
-    const service = await this.prisma.service.findUnique({
-      where: { id: dto.serviceId },
-      select: { id: true, userId: true },
-    });
+    const isOffer = dto.entityType === EntityType.OFFER;
 
-    if (!service) {
-      throw new NotFoundException('No se encontró el servicio seleccionado.');
+    // Valida que la publicación exista y pertenezca al usuario
+    // (o a una empresa que el usuario administra).
+    const entity = isOffer
+      ? await this.prisma.jobVacancy.findUnique({
+          where: { id: dto.entityId },
+          select: {
+            id: true,
+            companyId: true,
+            company: { select: { ownerId: true } },
+          },
+        })
+      : await this.prisma.service.findUnique({
+          where: { id: dto.entityId },
+          select: { id: true, userId: true },
+        });
+
+    const ownerId = isOffer
+      ? (entity as { company?: { ownerId?: string } } | null)?.company?.ownerId
+      : (entity as { userId?: string } | null)?.userId;
+
+    if (!entity) {
+      throw new NotFoundException(
+        isOffer
+          ? 'No se encontró la oferta seleccionada.'
+          : 'No se encontró el servicio seleccionado.',
+      );
     }
-    if (service.userId !== userId) {
+    if (ownerId !== userId) {
       throw new ForbiddenException(
-        'No puedes generar un pago para un servicio que no te pertenece.',
+        'No puedes generar un pago para una publicación que no te pertenece.',
       );
     }
 
-    const amountInCents = PLAN_AMOUNTS[dto.planType];
+    const amountInCents = PLANS_BY_ENTITY[dto.entityType][dto.planType];
     const reference = randomUUID();
     const { integritySecret, publicKey } = this.getKeys();
 
@@ -86,7 +120,7 @@ export class WompiService {
       data: {
         reference,
         userId,
-        serviceId: service.id,
+        ...(isOffer ? { offerId: entity.id } : { serviceId: entity.id }),
         amountInCents,
         status: 'PENDING',
       },
@@ -231,7 +265,13 @@ export class WompiService {
   }) {
     const existing = await this.prisma.transaction.findUnique({
       where: { reference: wompiTx.reference },
-      select: { id: true, status: true, amountInCents: true, serviceId: true },
+      select: {
+        id: true,
+        status: true,
+        amountInCents: true,
+        serviceId: true,
+        offerId: true,
+      },
     });
 
     if (!existing) {
@@ -247,7 +287,10 @@ export class WompiService {
     const expiresAt = new Date(
       Date.now() + SUBSCRIPTION_DAYS * 24 * 60 * 60 * 1000,
     );
-    const isFeatured = existing.amountInCents >= FEATURED_MIN_CENTS;
+    const planAmounts = existing.offerId
+      ? OFFER_PLAN_AMOUNTS
+      : SERVICE_PLAN_AMOUNTS;
+    const isFeatured = existing.amountInCents >= planAmounts.FEATURED;
 
     await this.prisma.$transaction([
       this.prisma.transaction.update({
@@ -276,10 +319,23 @@ export class WompiService {
             }),
           ]
         : []),
+      ...(existing.offerId
+        ? [
+            this.prisma.jobVacancy.update({
+              where: { id: existing.offerId },
+              data: {
+                paymentStatus: 'APPROVED',
+                status: 'ACTIVE',
+                isFeatured,
+                expiresAt,
+              },
+            }),
+          ]
+        : []),
     ]);
 
     this.logger.log(
-      `Pago aprobado: ref=${wompiTx.reference} serviceId=${existing.serviceId ?? '-'} featured=${isFeatured}`,
+      `Pago aprobado: ref=${wompiTx.reference} serviceId=${existing.serviceId ?? '-'} offerId=${existing.offerId ?? '-'} featured=${isFeatured}`,
     );
   }
 }
