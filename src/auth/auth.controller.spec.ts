@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { SignupService } from './services/signup.service';
 import { SigninService } from './services/signin.service';
+import { GoogleSignInService } from './services/google-signin.service';
 import { PasswordRecoveryService } from './services/password-recovery.service';
 import { VerifyOtpService } from './services/verify-otp.service';
 import { ResendOtpService } from './services/resend-otp.service';
@@ -50,6 +51,14 @@ describe('AuthController', () => {
     }),
   };
 
+  const mockGoogleSignInService = {
+    signInWithGoogle: jest.fn().mockResolvedValue({
+      statusCode: 200,
+      message: 'Inicio de sesión exitoso',
+      authenticationResult: { AccessToken: 'mock-jwt-token' },
+    }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
@@ -74,6 +83,10 @@ describe('AuthController', () => {
         {
           provide: ResendOtpService,
           useValue: mockResendOtpService,
+        },
+        {
+          provide: GoogleSignInService,
+          useValue: mockGoogleSignInService,
         },
       ],
     }).compile();

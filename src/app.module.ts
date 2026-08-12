@@ -8,6 +8,7 @@ import { SettingsModule } from './settings/settings.module';
 import { OffersModule } from './offers/offers.module';
 import { ServicesModule } from './services/services.module';
 import { CommonModule } from './common/common.module';
+import { UsersModule } from './users/users.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
@@ -23,6 +24,7 @@ import { WompiModule } from './wompi/wompi.module';
     SettingsModule,
     OffersModule,
     ServicesModule,
+    UsersModule,
     PushNotificationsModule,
     HealthModule,
     WompiModule,

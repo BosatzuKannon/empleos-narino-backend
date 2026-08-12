@@ -16,6 +16,7 @@ datasource db {
 // -----------------------------------------------------------------------------
 
 enum UserRole {
+  PENDING
   CANDIDATE
   COMPANY_ADMIN
   SUPER_ADMIN
@@ -50,15 +51,15 @@ enum ServiceStatus {
 }
 
 enum TransactionType {
-  PAY_PER_POST        
-  SUBSCRIPTION        
-  USER_SERVICE_POST   
+  PAY_PER_POST
+  SUBSCRIPTION
+  USER_SERVICE_POST
 }
 
 enum TransactionStatus {
   PENDING
-  APPROVED  
-  DECLINED  
+  APPROVED
+  DECLINED
   REFUNDED
 }
 
@@ -73,80 +74,82 @@ enum ServicePaymentStatus {
 // -----------------------------------------------------------------------------
 
 model User {
-  id               String    @id @db.Uuid 
-  email            String    @unique
-  firstName        String
-  lastName         String?
-  phone            String?
-  role             UserRole  @default(CANDIDATE)
-  city             String?
-  birthDate        DateTime?
-  resume           String?
-  isVerified       Boolean   @default(true)
-  otpCode          String?
-  otpExpiresAt     DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id           String    @id @db.Uuid
+  email        String    @unique
+  googleId     String?   @unique
+  firstName    String
+  lastName     String?
+  avatarUrl    String?
+  phone        String?
+  role         UserRole  @default(CANDIDATE)
+  city         String?
+  birthDate    DateTime?
+  resume       String?
+  isVerified   Boolean   @default(true)
+  otpCode      String?
+  otpExpiresAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  devices          Device[]
-  companies        Company[]
-  applications     Application[]
-  transactions     Transaction[]
-  services         Service[]
-  preferences      UserPreference?
+  devices      Device[]
+  companies    Company[]
+  applications Application[]
+  transactions Transaction[]
+  services     Service[]
+  preferences  UserPreference?
 }
 
 model Company {
-  id             String   @id @default(uuid()) @db.Uuid
-  name           String
-  description    String?
-  taxId          String?  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  taxId       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  ownerId        String   @db.Uuid
-  owner          User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String @db.Uuid
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
-  jobs           JobVacancy[]
-  subscriptions  Subscription[]
+  jobs          JobVacancy[]
+  subscriptions Subscription[]
 }
 
 model JobVacancy {
-  id             String       @id @default(uuid()) @db.Uuid
-  title          String
-  description    String
-  salary         Decimal?     @db.Decimal(10, 2)
-  status         EntityStatus @default(DRAFT)
-  expiresAt      DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id          String       @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  salary      Decimal?     @db.Decimal(10, 2)
+  status      EntityStatus @default(DRAFT)
+  expiresAt   DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   location           String?
   contractType       String?
   requirements       String?
-  availablePositions Int?      @default(1)
+  availablePositions Int?                 @default(1)
   paymentStatus      ServicePaymentStatus @default(PENDING)
-  isFeatured         Boolean             @default(false)
+  isFeatured         Boolean              @default(false)
 
-  companyId      String       @db.Uuid
-  company        Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  applications   Application[]
-  transactions   Transaction[] 
+  applications Application[]
+  transactions Transaction[]
 }
 
 model Application {
-  id             String            @id @default(uuid()) @db.Uuid
-  status         ApplicationStatus @default(SENT)
-  appliedAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id        String            @id @default(uuid()) @db.Uuid
+  status    ApplicationStatus @default(SENT)
+  appliedAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
-  userId         String     @db.Uuid
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  jobId          String     @db.Uuid
-  jobVacancy     JobVacancy @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId     String     @db.Uuid
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId      String     @db.Uuid
+  jobVacancy JobVacancy @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, jobId]) 
+  @@unique([userId, jobId])
 }
 
 // -----------------------------------------------------------------------------
@@ -160,10 +163,10 @@ model Subscription {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  companyId        String       @db.Uuid
-  company          Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  
-  transactions     Transaction[]
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  transactions Transaction[]
 }
 
 model Transaction {
@@ -178,17 +181,17 @@ model Transaction {
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
 
-  userId           String   @db.Uuid
-  user             User     @relation(fields: [userId], references: [id])
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id])
 
-  offerId          String?  @db.Uuid
-  jobVacancy       JobVacancy? @relation(fields: [offerId], references: [id])
-  
-  subscriptionId   String?  @db.Uuid
-  subscription     Subscription?    @relation(fields: [subscriptionId], references: [id])
-  
-  serviceId        String?  @db.Uuid
-  service          Service? @relation(fields: [serviceId], references: [id])
+  offerId    String?     @db.Uuid
+  jobVacancy JobVacancy? @relation(fields: [offerId], references: [id])
+
+  subscriptionId String?       @db.Uuid
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+
+  serviceId String?  @db.Uuid
+  service   Service? @relation(fields: [serviceId], references: [id])
 }
 
 // -----------------------------------------------------------------------------
@@ -211,11 +214,11 @@ model Service {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
-  userId       String            @db.Uuid
-  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  categoryId   String            @db.Uuid
-  category     ServiceCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  categoryId String          @db.Uuid
+  category   ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
   transactions Transaction[]
 
@@ -224,12 +227,12 @@ model Service {
 }
 
 model ServiceCategory {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String    @unique
-  services  Service[]
+  id       String    @id @default(uuid()) @db.Uuid
+  name     String    @unique
+  services Service[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // -----------------------------------------------------------------------------
@@ -239,12 +242,12 @@ model ServiceCategory {
 model Device {
   id        String   @id @default(uuid()) @db.Uuid
   pushToken String   @unique // The unique token generated by FCM / Expo
-  platform  String   // 'IOS', 'ANDROID', or 'WEB'
+  platform  String // 'IOS', 'ANDROID', or 'WEB'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  userId    String   @db.Uuid
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId]) // Makes querying tokens for a specific user blazing fast
 }

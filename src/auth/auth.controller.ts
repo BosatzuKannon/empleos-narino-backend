@@ -1,11 +1,14 @@
 import { Controller, Post, Body } from '@nestjs/common';
+import { Public } from '../common/decorators/public.decorator';
 import { SignupService } from './services/signup.service';
 import { SigninService } from './services/signin.service';
+import { GoogleSignInService } from './services/google-signin.service';
 import { PasswordRecoveryService } from './services/password-recovery.service';
 import { VerifyOtpService } from './services/verify-otp.service';
 import { ResendOtpService } from './services/resend-otp.service';
 import { SignUpDto } from './dto/signup.dto';
 import { SignInDto } from './dto/signin.dto';
+import { GoogleSignInDto } from './dto/google-signin.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ConfirmNewPasswordDto } from './dto/confirm-new-password.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -16,6 +19,7 @@ export class AuthController {
   constructor(
     private readonly authService: SignupService,
     private readonly signinService: SigninService,
+    private readonly googleSignInService: GoogleSignInService,
     private readonly passwordRecoveryService: PasswordRecoveryService,
     private readonly verifyOtpService: VerifyOtpService,
     private readonly resendOtpService: ResendOtpService,
@@ -29,6 +33,12 @@ export class AuthController {
   @Post('signin')
   async signIn(@Body() signInDto: SignInDto) {
     return this.signinService.signIn(signInDto);
+  }
+
+  @Public()
+  @Post('google')
+  async signInWithGoogle(@Body() googleSignInDto: GoogleSignInDto) {
+    return this.googleSignInService.signInWithGoogle(googleSignInDto);
   }
 
   @Post('verify-otp')
