@@ -15,14 +15,14 @@ jest.mock('google-auth-library', () => {
 });
 
 jest.mock('@supabase/supabase-js', () => {
-  const signInWithIdToken = jest.fn();
-  const updateUserById = jest.fn();
+  const createUser = jest.fn();
+  const listUsers = jest.fn();
   return {
     createClient: jest.fn(() => ({
-      auth: { signInWithIdToken, admin: { updateUserById } },
+      auth: { admin: { createUser, listUsers } },
     })),
-    __signInWithIdToken: signInWithIdToken,
-    __updateUserById: updateUserById,
+    __createUser: createUser,
+    __listUsers: listUsers,
   };
 });
 
@@ -31,15 +31,15 @@ interface MockedGoogleModule {
 }
 
 interface MockedSupabaseModule {
-  __signInWithIdToken: jest.Mock;
-  __updateUserById: jest.Mock;
+  __createUser: jest.Mock;
+  __listUsers: jest.Mock;
 }
 
 describe('GoogleSignInService', () => {
   let service: GoogleSignInService;
   let verifyIdToken: jest.Mock;
-  let signInWithIdToken: jest.Mock;
-  let updateUserById: jest.Mock;
+  let createUser: jest.Mock;
+  let listUsers: jest.Mock;
   let prismaMock: {
     user: { findUnique: jest.Mock; create: jest.Mock; update: jest.Mock };
     company: { findFirst: jest.Mock };
@@ -54,29 +54,27 @@ describe('GoogleSignInService', () => {
     }),
   };
 
-  const supabaseSession = {
-    data: {
-      user: { id: 'supabase-uid-123', email: 'ana@example.com' },
-      session: {
-        access_token: 'mock-access-token',
-        refresh_token: 'mock-refresh-token',
-        expires_in: 3600,
-        token_type: 'bearer',
-      },
-    },
-    error: null,
+  const existingUser = {
+    id: 'supabase-uid-123',
+    email: 'ana@example.com',
+    firstName: 'Ana',
+    lastName: 'Gómez',
+    googleId: null,
+    avatarUrl: null,
+    role: 'CANDIDATE',
+    phone: '',
+    city: '',
   };
 
   beforeEach(async () => {
     verifyIdToken = (googleAuthModule as unknown as MockedGoogleModule)
       .__verifyIdToken;
-    signInWithIdToken = (supabaseModule as unknown as MockedSupabaseModule)
-      .__signInWithIdToken;
-    updateUserById = (supabaseModule as unknown as MockedSupabaseModule)
-      .__updateUserById;
+    createUser = (supabaseModule as unknown as MockedSupabaseModule)
+      .__createUser;
+    listUsers = (supabaseModule as unknown as MockedSupabaseModule).__listUsers;
     verifyIdToken.mockReset();
-    signInWithIdToken.mockReset();
-    updateUserById.mockReset();
+    createUser.mockReset();
+    listUsers.mockReset();
 
     prismaMock = {
       user: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -89,6 +87,7 @@ describe('GoogleSignInService', () => {
           SUPABASE_URL: 'https://mock-url.supabase.co',
           SUPABASE_SERVICE_ROLE_KEY: 'mock-key',
           GOOGLE_WEB_CLIENT_ID: 'mock-web-client-id',
+          JWT_SECRET: 'mock-jwt-secret',
         };
         return config[key];
       }),
@@ -109,32 +108,57 @@ describe('GoogleSignInService', () => {
     expect(service).toBeDefined();
   });
 
-  it('debería crear el usuario si no existe y devolver token + usuario', async () => {
+  it('debería solo iniciar sesión si el usuario ya existe en Prisma (sin llamar a Supabase admin)', async () => {
     verifyIdToken.mockResolvedValue(googleTicket);
-    signInWithIdToken.mockResolvedValue(supabaseSession);
+    prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
+    prismaMock.company.findFirst.mockResolvedValueOnce(null);
+
+    const result = (await service.signInWithGoogle({
+      idToken: 'valid-id-token',
+    })) as {
+      authenticationResult: { AccessToken: string };
+      user: { id: string; nombre: string; role: string };
+    };
+
+    expect(createUser).not.toHaveBeenCalled();
+    expect(prismaMock.user.create).not.toHaveBeenCalled();
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
+    expect(result.authenticationResult.AccessToken.split('.')).toHaveLength(3);
+    expect(result.user.id).toBe('supabase-uid-123');
+    expect(result.user.role).toBe('CANDIDATE');
+  });
+
+  it('debería crear Supabase + Prisma si el usuario no existe (sin OTP) y devolver JWT', async () => {
+    verifyIdToken.mockResolvedValue(googleTicket);
     prismaMock.user.findUnique.mockResolvedValueOnce(null);
-    prismaMock.user.create.mockResolvedValueOnce({
-      id: 'supabase-uid-123',
-      email: 'ana@example.com',
-      firstName: 'Ana',
-      lastName: 'Gómez',
+    createUser.mockResolvedValueOnce({
+      data: {
+        user: { id: 'supabase-uid-123', email: 'ana@example.com' },
+      },
+      error: null,
+    });
+    prismaMock.user.update.mockResolvedValueOnce({
+      ...existingUser,
       googleId: 'google-sub-123',
       avatarUrl: 'https://example.com/ana.jpg',
       role: 'PENDING',
-      phone: '',
-      city: '',
     });
 
     const result = (await service.signInWithGoogle({
       idToken: 'valid-id-token',
     })) as {
       authenticationResult: { AccessToken: string };
-      user: { id: string; nombre: string };
+      user: { id: string; role: string };
     };
 
-    expect(prismaMock.user.create).toHaveBeenCalledWith({
+    expect(createUser).toHaveBeenCalledWith({
+      email: 'ana@example.com',
+      email_confirm: true,
+      user_metadata: { role: 'PENDING' },
+    });
+    expect(prismaMock.user.update).toHaveBeenCalledWith({
+      where: { id: 'supabase-uid-123' },
       data: {
-        id: 'supabase-uid-123',
         email: 'ana@example.com',
         firstName: 'Ana',
         lastName: 'Gómez',
@@ -144,57 +168,48 @@ describe('GoogleSignInService', () => {
         isVerified: true,
       },
     });
-    expect(result.authenticationResult.AccessToken).toBe('mock-access-token');
-    expect(result.user.nombre).toBe('Ana');
-    expect(updateUserById).toHaveBeenCalledWith('supabase-uid-123', {
-      user_metadata: { role: 'PENDING' },
-    });
+    expect(result.authenticationResult.AccessToken.split('.')).toHaveLength(3);
+    expect(result.user.role).toBe('PENDING');
   });
 
-  it('debería actualizar googleId/avatarUrl si el usuario ya existe', async () => {
+  it('debería adoptar un usuario huérfano de Supabase si createUser dice email_exists', async () => {
     verifyIdToken.mockResolvedValue(googleTicket);
-    signInWithIdToken.mockResolvedValue(supabaseSession);
-    prismaMock.user.findUnique.mockResolvedValueOnce({
-      id: 'supabase-uid-123',
-      email: 'ana@example.com',
-      firstName: 'Ana',
-      lastName: 'Gómez',
-      googleId: null,
-      avatarUrl: null,
-      role: 'CANDIDATE',
-      phone: '',
-      city: '',
+    prismaMock.user.findUnique.mockResolvedValueOnce(null);
+    createUser.mockResolvedValueOnce({
+      data: null,
+      error: new Error(
+        'A user with this email address has already been registered',
+      ),
+    });
+    listUsers.mockResolvedValueOnce({
+      data: { users: [{ id: 'orphan-uid', email: 'ana@example.com' }] },
+      error: null,
     });
     prismaMock.user.update.mockResolvedValueOnce({
-      id: 'supabase-uid-123',
-      email: 'ana@example.com',
-      firstName: 'Ana',
-      lastName: 'Gómez',
+      ...existingUser,
+      id: 'orphan-uid',
       googleId: 'google-sub-123',
-      avatarUrl: 'https://example.com/ana.jpg',
-      role: 'CANDIDATE',
-      phone: '',
-      city: '',
+      role: 'PENDING',
     });
 
     const result = (await service.signInWithGoogle({
       idToken: 'valid-id-token',
-    })) as {
-      authenticationResult: { AccessToken: string };
-      user: { id: string; nombre: string };
-    };
+    })) as { user: { id: string; role: string } };
 
-    expect(prismaMock.user.create).not.toHaveBeenCalled();
+    expect(listUsers).toHaveBeenCalled();
     expect(prismaMock.user.update).toHaveBeenCalledWith({
-      where: { id: 'supabase-uid-123' },
+      where: { id: 'orphan-uid' },
       data: {
-        googleId: 'google-sub-123',
-        avatarUrl: 'https://example.com/ana.jpg',
+        email: 'ana@example.com',
         firstName: 'Ana',
         lastName: 'Gómez',
+        googleId: 'google-sub-123',
+        avatarUrl: 'https://example.com/ana.jpg',
+        role: 'PENDING',
+        isVerified: true,
       },
     });
-    expect(result.user.id).toBe('supabase-uid-123');
+    expect(result.user.id).toBe('orphan-uid');
   });
 
   it('debería lanzar UnauthorizedException si el token de Google es inválido', async () => {
