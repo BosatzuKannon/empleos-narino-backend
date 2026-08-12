@@ -9,6 +9,7 @@ import {
 import { createHash, randomUUID, timingSafeEqual } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
+import { EmailService } from '../email/email.service';
 import {
   EntityType,
   GenerateCheckoutDto,
@@ -36,7 +37,10 @@ const PLANS_BY_ENTITY: Record<EntityType, Record<PlanType, number>> = {
 export class WompiService {
   private readonly logger = new Logger(WompiService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly emailService: EmailService,
+  ) {}
 
   private getKeys() {
     const integritySecret = process.env.WOMPI_INTEGRITY_SECRET;
@@ -269,8 +273,11 @@ export class WompiService {
         id: true,
         status: true,
         amountInCents: true,
+        userId: true,
         serviceId: true,
         offerId: true,
+        service: { select: { title: true } },
+        jobVacancy: { select: { title: true } },
       },
     });
 
@@ -337,5 +344,44 @@ export class WompiService {
     this.logger.log(
       `Pago aprobado: ref=${wompiTx.reference} serviceId=${existing.serviceId ?? '-'} offerId=${existing.offerId ?? '-'} featured=${isFeatured}`,
     );
+
+    await this.sendPaymentReceipt(existing, wompiTx.reference);
+  }
+
+  private async sendPaymentReceipt(
+    tx: {
+      userId: string | null;
+      amountInCents: number;
+      serviceId: string | null;
+      offerId: string | null;
+      service?: { title: string | null } | null;
+      jobVacancy?: { title: string | null } | null;
+    },
+    reference: string,
+  ) {
+    const itemName = tx.offerId
+      ? (tx.jobVacancy?.title ?? 'Oferta de trabajo')
+      : (tx.service?.title ?? 'Servicio');
+
+    const buyer = tx.userId
+      ? await this.prisma.user.findUnique({
+          where: { id: tx.userId },
+          select: { email: true },
+        })
+      : null;
+
+    if (!buyer?.email) {
+      this.logger.warn(
+        `Sin destinatario para el recibo de pago: ref=${reference}`,
+      );
+      return;
+    }
+
+    await this.emailService.sendPaymentReceiptEmail({
+      to: buyer.email,
+      itemName,
+      reference,
+      amountInCents: tx.amountInCents,
+    });
   }
 }

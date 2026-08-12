@@ -23,6 +23,14 @@ interface SendApplicationStatusParams {
   status: ApplicationStatus;
 }
 
+interface SendPaymentReceiptParams {
+  to: string;
+  itemName: string;
+  reference: string;
+  amountInCents: number;
+  paidAt?: Date;
+}
+
 @Injectable()
 export class EmailService {
   private readonly SENDER_EMAIL: string;
@@ -175,9 +183,57 @@ export class EmailService {
     await this.send(to, subject, html);
   }
 
-  // ---------------------------------------------------------------------------
-  // HELPERS
-  // ---------------------------------------------------------------------------
+  async sendPaymentReceiptEmail({
+    to,
+    itemName,
+    reference,
+    amountInCents,
+    paidAt,
+  }: SendPaymentReceiptParams): Promise<void> {
+    if (!(await this.canSendTransactional(to))) {
+      return;
+    }
+
+    const amount = `$ ${(amountInCents / 100).toLocaleString('es-CO')}`;
+    const date = (paidAt ?? new Date()).toLocaleString('es-CO', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
+
+    const subject = 'Tu recibo de pago en Empleos Nariño';
+    const html = renderEmailTemplate({
+      title: 'Recibo de pago',
+      greeting: 'Hola,',
+      contentHtml: `
+        <p>Gracias por tu pago en Empleos Nariño. Aquí está el recibo de tu
+        transacción:</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #666666; border-top: 1px solid #eeeeee;">Fecha</td>
+            <td align="right" style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; color: #333333; border-top: 1px solid #eeeeee;">${date}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #666666; border-top: 1px solid #eeeeee;">Publicación</td>
+            <td align="right" style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; font-weight: bold; color: #333333; border-top: 1px solid #eeeeee;">${itemName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #666666; border-top: 1px solid #eeeeee;">Referencia</td>
+            <td align="right" style="padding: 8px 0; font-family: 'Courier New', monospace; font-size: 13px; font-weight: bold; color: #333333; border-top: 1px solid #eeeeee;">${reference}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #666666; border-top: 1px solid #eeeeee;">Monto pagado</td>
+            <td align="right" style="padding: 8px 0; font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: bold; color: #558B2F; border-top: 1px solid #eeeeee;">${amount}</td>
+          </tr>
+        </table>
+        <p>Tu publicación permanecerá activa durante 30 días. Pasado este periodo
+        se desactivará automáticamente.</p>
+      `,
+      footerNote:
+        'Si tienes dudas sobre tu pago, contáctanos y con gusto te ayudamos.',
+    });
+
+    await this.send(to, subject, html);
+  }
 
   private async canSendTransactional(email: string): Promise<boolean> {
     try {
