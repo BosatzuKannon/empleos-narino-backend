@@ -23,6 +23,7 @@ export class CreateOfferService {
       tipo_contrato,
       requisitos,
       cupos,
+      modality,
     } = createOfferDto;
 
     try {
@@ -44,6 +45,7 @@ export class CreateOfferService {
           location: ubicacion,
           salary: salario,
           contractType: tipo_contrato,
+          modality: modality ?? 'Presencial',
           requirements: requisitos ?? '',
           availablePositions: cupos,
           status: 'PENDING_PAYMENT',

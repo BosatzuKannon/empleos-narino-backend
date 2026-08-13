@@ -126,6 +126,7 @@ model JobVacancy {
 
   location           String?
   contractType       String?
+  modality           String   @default("Presencial")
   requirements       String?
   availablePositions Int?                 @default(1)
   paymentStatus      ServicePaymentStatus @default(PENDING)

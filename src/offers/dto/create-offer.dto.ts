@@ -33,6 +33,10 @@ export class CreateOfferDto {
 
   @IsString()
   @IsOptional()
+  modality?: string;
+
+  @IsString()
+  @IsOptional()
   requisitos?: string;
 
   @IsNumber()

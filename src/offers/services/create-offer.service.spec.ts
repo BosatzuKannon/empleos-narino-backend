@@ -91,6 +91,7 @@ describe('CreateOfferService', () => {
         location: 'Pasto',
         salary: 1000,
         contractType: 'Indefinido',
+        modality: 'Presencial',
         requirements: 'Test',
         status: 'ACTIVE',
         companyId: 'company-456',

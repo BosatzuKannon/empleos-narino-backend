@@ -14,6 +14,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
 import { WompiModule } from './wompi/wompi.module';
 import { ScraperModule } from './scraper/scraper.module';
+import { NotificationModule } from './notifications/notification.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ScraperModule } from './scraper/scraper.module';
     HealthModule,
     WompiModule,
     ScraperModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
