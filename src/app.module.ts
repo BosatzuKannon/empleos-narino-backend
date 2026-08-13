@@ -13,6 +13,7 @@ import { PushNotificationsModule } from './push-notifications/push-notifications
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
 import { WompiModule } from './wompi/wompi.module';
+import { ScraperModule } from './scraper/scraper.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { WompiModule } from './wompi/wompi.module';
     PushNotificationsModule,
     HealthModule,
     WompiModule,
+    ScraperModule,
   ],
   controllers: [AppController],
   providers: [AppService],

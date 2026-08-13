@@ -71,6 +71,16 @@ export class GoogleSignInService {
           avatarUrl: payload.picture || null,
           role: UserRole.PENDING,
         });
+      } else {
+        // User registered manually before: adopt the Google avatar, and the
+        // googleId if the manual account never linked one.
+        dbUser = await this.prisma.user.update({
+          where: { id: dbUser.id },
+          data: {
+            avatarUrl: payload.picture || dbUser.avatarUrl,
+            googleId: dbUser.googleId ?? payload.sub,
+          },
+        });
       }
 
       // 4. Generate our own app JWT (the DB trigger row may predate the
