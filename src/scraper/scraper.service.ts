@@ -105,12 +105,15 @@ export class ScraperService {
     this.logger.log(`Detalle obtenido OK (${html.length} chars).`);
 
     let title: string;
-    let description: string;
+    let cleanDesc: string;
     try {
       const $ = cheerio.load(html);
       const detailTitle = clean($('.ads-details-wrapper h2').first().text());
       title = clean(listTitle) || detailTitle;
-      description = clean($('.ads-details-info').first().text());
+      const rawDesc = clean($('.ads-details-info').first().text());
+      cleanDesc = rawDesc
+        .replace(/^(?:FSE\s*\d+\s*|-\d+\s*)+/i, '')
+        .trim();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Falló el parseo Cheerio de ${detailUrl}: ${message}`);
@@ -118,7 +121,7 @@ export class ScraperService {
 
     const payload: Prisma.JobVacancyUncheckedCreateInput = {
       title,
-      description,
+      description: cleanDesc,
       // ponytail: model is JobVacancy, not JobOffer; the spec's isActive/isPaid/
       // municipio/modality/vacancies map onto the columns the app already reads.
       companyId: COMPANY_ID,
