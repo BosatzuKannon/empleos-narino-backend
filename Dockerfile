@@ -22,7 +22,7 @@ RUN pnpm config set ignore-scripts false
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Generate the Prisma Client
-RUN pnpm dlx prisma generate
+RUN pnpm exec prisma generate
 
 # Copy the rest of the application code
 COPY . .
@@ -55,7 +55,7 @@ RUN pnpm config set ignore-scripts false
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Generate the Prisma Client for the production environment
-RUN pnpm dlx prisma generate
+RUN pnpm exec prisma generate
 
 # Copy the compiled code from the builder stage
 COPY --from=builder /app/dist ./dist
