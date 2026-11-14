@@ -57,7 +57,9 @@ export class GoogleSignInService {
       const lastName = lastNameParts.length ? lastNameParts.join(' ') : null;
 
       // 2. Check if the user exists in Prisma by email
-      let dbUser = await this.prisma.user.findUnique({ where: { email } });
+      let dbUser: User | null = await this.prisma.user.findUnique({
+        where: { email },
+      });
 
       // 3. Not in Prisma -> provision Supabase Auth + Prisma.
       // No password, no OTP: email_confirm: true makes the email trusted.
