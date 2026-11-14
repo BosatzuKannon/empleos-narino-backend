@@ -129,7 +129,7 @@ model JobVacancy {
   modality           String   @default("Presencial")
   requirements       String?
   availablePositions Int?                 @default(1)
-  paymentStatus      ServicePaymentStatus @default(PENDING)
+  paymentStatus      ServicePaymentStatus @default(APPROVED)
   isFeatured         Boolean              @default(false)
 
   companyId String  @db.Uuid
@@ -209,7 +209,7 @@ model Service {
   imageUrl      String?
   status        ServiceStatus        @default(ACTIVE)
   viewsCount    Int                  @default(0)
-  paymentStatus ServicePaymentStatus @default(PENDING)
+  paymentStatus ServicePaymentStatus @default(APPROVED)
   expiresAt     DateTime?
   isFeatured    Boolean              @default(false)
   createdAt     DateTime             @default(now())

@@ -12,7 +12,6 @@ import { UsersModule } from './users/users.module';
 import { PushNotificationsModule } from './push-notifications/push-notifications.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
-import { WompiModule } from './wompi/wompi.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { NotificationModule } from './notifications/notification.module';
 import { ShareModule } from './share/share.module';
@@ -30,7 +29,6 @@ import { ShareModule } from './share/share.module';
     UsersModule,
     PushNotificationsModule,
     HealthModule,
-    WompiModule,
     ScraperModule,
     NotificationModule,
     ShareModule,

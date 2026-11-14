@@ -6,10 +6,8 @@ import { UpdateOfferStatusDto } from '../dto/update-offer-status.dto';
 import { EntityStatus } from '@prisma/client';
 
 const STATUS_MAP: Record<string, EntityStatus> = {
-  verificando_pago: EntityStatus.PENDING_PAYMENT,
   activo: EntityStatus.ACTIVE,
   inactivo: EntityStatus.INACTIVE,
-  pago_incorrecto: EntityStatus.PENDING_PAYMENT,
 };
 
 @Injectable()
@@ -40,7 +38,6 @@ export class UpdateOfferStatusService {
       const notifyStatuses: EntityStatus[] = [
         EntityStatus.ACTIVE,
         EntityStatus.INACTIVE,
-        EntityStatus.PENDING_PAYMENT,
       ];
       const shouldNotify = notifyStatuses.includes(targetStatus);
 
@@ -103,12 +100,6 @@ export class UpdateOfferStatusService {
         return {
           title: 'Tu oferta ha sido pausada',
           body: `La oferta "${offerTitle}" ya no está recibiendo postulaciones. Puedes reactivarla cuando lo necesites.`,
-          data,
-        };
-      case EntityStatus.PENDING_PAYMENT:
-        return {
-          title: 'Problema con el pago de tu oferta',
-          body: `Detectamos un problema con el comprobante de pago de "${offerTitle}". Revisa la información del pago.`,
           data,
         };
       default:

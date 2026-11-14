@@ -48,7 +48,7 @@ export class CreateOfferService {
           modality: modality ?? 'Presencial',
           requirements: requisitos ?? '',
           availablePositions: cupos,
-          status: 'PENDING_PAYMENT',
+          status: 'ACTIVE',
           companyId: company.id,
         },
       });

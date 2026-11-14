@@ -1,11 +1,6 @@
 import { IsString, IsIn, IsNotEmpty, IsOptional } from 'class-validator';
 
-const VALID_STATUSES = [
-  'verificando_pago',
-  'activo',
-  'inactivo',
-  'pago_incorrecto',
-];
+const VALID_STATUSES = ['activo', 'inactivo'];
 
 export class UpdateOfferStatusDto {
   @IsString()

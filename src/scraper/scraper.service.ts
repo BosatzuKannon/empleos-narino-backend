@@ -126,7 +126,6 @@ export class ScraperService {
       // municipio/modality/vacancies map onto the columns the app already reads.
       companyId: COMPANY_ID,
       status: 'ACTIVE',
-      paymentStatus: 'APPROVED',
       location: 'Pasto',
       contractType: 'Indefinido',
       modality: 'Presencial',
