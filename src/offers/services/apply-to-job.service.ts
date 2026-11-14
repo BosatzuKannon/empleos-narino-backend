@@ -85,8 +85,7 @@ export class ApplyToJobService {
       // Prisma P2002 -> duplicate application (unique userId + jobId)
       if (
         error instanceof Error &&
-        'code' in error &&
-        (error as any).code === 'P2002'
+        (error as Error & { code?: string }).code === 'P2002'
       ) {
         throw new ConflictException({
           message: 'Ya te has postulado a esta oferta anteriormente.',

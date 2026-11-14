@@ -47,7 +47,10 @@ describe('GetOffersByUserService', () => {
     expect(prismaMock.jobVacancy.findMany).toHaveBeenCalledWith({
       where: { companyId: 'company-789' },
       orderBy: { createdAt: 'desc' },
-      include: { company: true },
+      include: {
+        company: true,
+        _count: { select: { applications: true } },
+      },
     });
   });
 

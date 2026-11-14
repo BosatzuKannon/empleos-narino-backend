@@ -111,6 +111,11 @@ describe('GoogleSignInService', () => {
   it('debería solo iniciar sesión si el usuario ya existe en Prisma (sin llamar a Supabase admin)', async () => {
     verifyIdToken.mockResolvedValue(googleTicket);
     prismaMock.user.findUnique.mockResolvedValueOnce(existingUser);
+    prismaMock.user.update.mockResolvedValueOnce({
+      ...existingUser,
+      googleId: 'google-sub-123',
+      avatarUrl: 'https://example.com/ana.jpg',
+    });
     prismaMock.company.findFirst.mockResolvedValueOnce(null);
 
     const result = (await service.signInWithGoogle({
@@ -122,7 +127,13 @@ describe('GoogleSignInService', () => {
 
     expect(createUser).not.toHaveBeenCalled();
     expect(prismaMock.user.create).not.toHaveBeenCalled();
-    expect(prismaMock.user.update).not.toHaveBeenCalled();
+    expect(prismaMock.user.update).toHaveBeenCalledWith({
+      where: { id: 'supabase-uid-123' },
+      data: {
+        avatarUrl: 'https://example.com/ana.jpg',
+        googleId: 'google-sub-123',
+      },
+    });
     expect(result.authenticationResult.AccessToken.split('.')).toHaveLength(3);
     expect(result.user.id).toBe('supabase-uid-123');
     expect(result.user.role).toBe('CANDIDATE');

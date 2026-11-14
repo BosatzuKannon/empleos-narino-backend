@@ -4,8 +4,7 @@ import { PrismaService } from '../prisma.service';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const MESSAGE_TITLE = '¡Nuevas ofertas de empleo!';
-const MESSAGE_BODY =
-  'Revisa las vacantes publicadas hoy en Empleos Nariño.';
+const MESSAGE_BODY = 'Revisa las vacantes publicadas hoy en Empleos Nariño.';
 const CHUNK_SIZE = 100;
 
 const isValidPushToken = (token: string): boolean =>

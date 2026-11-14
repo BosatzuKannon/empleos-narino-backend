@@ -121,13 +121,15 @@ export class CreateServiceService {
             throw new ConflictException(
               'Ya existe un servicio con esos datos.',
             );
-          case 'P2003':
+          case 'P2003': {
+            const fieldName = error.meta?.field_name;
             this.logger.warn(
-              `Clave foránea inválida al crear servicio: ${String(error.meta?.field_name ?? '')}`,
+              `Clave foránea inválida al crear servicio: ${typeof fieldName === 'string' ? fieldName : ''}`,
             );
             throw new BadRequestException(
               'El usuario o la categoría seleccionada no son válidos.',
             );
+          }
           case 'P2004':
           case 'P2019':
             this.logger.warn(

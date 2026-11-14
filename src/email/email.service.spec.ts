@@ -23,7 +23,7 @@ interface SentEmail {
 describe('EmailService', () => {
   let service: EmailService;
   let prismaMock: { user: { findUnique: jest.Mock } };
-  // eslint-disable-next-line @typescript-eslint/unbound-method
+
   const sgSendMock = jest.mocked(sgMail.send) as jest.Mock;
 
   function lastSentEmail(): SentEmail {

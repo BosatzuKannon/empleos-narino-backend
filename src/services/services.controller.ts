@@ -9,7 +9,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+} from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateServiceService } from './services/create-service.service';
 import { GetActiveServicesService } from './services/get-active-services.service';
@@ -72,7 +75,7 @@ export class ServicesController {
 
   @Post('createService')
   async createService(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() createServiceDto: CreateServiceDto,
   ) {
     return this.createServiceService.createService(
@@ -82,13 +85,13 @@ export class ServicesController {
   }
 
   @Get('getServicesByUser')
-  async getServicesByUser(@Req() req: any) {
+  async getServicesByUser(@Req() req: AuthenticatedRequest) {
     return this.getServicesByUserService.getServicesByUser(req.user.userId);
   }
 
   @Patch('updateServiceStatus/:service_id')
   async updateServiceStatus(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('service_id') serviceId: string,
     @Body() updateServiceStatusDto: UpdateServiceStatusDto,
   ) {
@@ -100,7 +103,10 @@ export class ServicesController {
   }
 
   @Delete('deleteService/:service_id')
-  async deleteService(@Req() req: any, @Param('service_id') serviceId: string) {
+  async deleteService(
+    @Req() req: AuthenticatedRequest,
+    @Param('service_id') serviceId: string,
+  ) {
     return this.deleteServiceService.deleteService(req.user.userId, serviceId);
   }
 

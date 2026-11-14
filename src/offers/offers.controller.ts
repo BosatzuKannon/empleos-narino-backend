@@ -8,7 +8,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+} from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CreateOfferService } from './services/create-offer.service';
 import { GetActiveOffersService } from './services/get-active-offers.service';
@@ -56,7 +59,7 @@ export class OffersController {
   }
 
   @Get('getOffersByUser/:cognito_id')
-  async getOffersByUser(@Req() req: any) {
+  async getOffersByUser(@Req() req: AuthenticatedRequest) {
     return this.getOffersByUserService.getOffersByUser(req.user.userId);
   }
 
@@ -79,18 +82,21 @@ export class OffersController {
   }
 
   @Post('applyToJob/:cognito_id')
-  async applyToJob(@Req() req: any, @Body() applyToJobDto: ApplyToJobDto) {
+  async applyToJob(
+    @Req() req: AuthenticatedRequest,
+    @Body() applyToJobDto: ApplyToJobDto,
+  ) {
     return this.applyToJobService.applyToJob(req.user.userId, applyToJobDto);
   }
 
   @Get('getUserApplications/:cognito_id')
-  async getUserApplications(@Req() req: any) {
+  async getUserApplications(@Req() req: AuthenticatedRequest) {
     return this.getUserApplicationsService.getUserApplications(req.user.userId);
   }
 
   @Get('getOfferApplications/:offer_id')
   async getOfferApplications(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('offer_id') offerId: string,
   ) {
     return this.getOfferApplicationsService.getOfferApplications(
@@ -101,7 +107,7 @@ export class OffersController {
 
   @Put('updateApplicationStatus/:application_id')
   async updateApplicationStatus(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Param('application_id') applicationId: string,
     @Body() updateApplicationStatusDto: UpdateApplicationStatusDto,
   ) {

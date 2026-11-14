@@ -5,10 +5,16 @@ import { InternalServerErrorException } from '@nestjs/common';
 
 describe('GetOfferApplicationsService', () => {
   let service: GetOfferApplicationsService;
-  let prismaMock: { application: { findMany: jest.Mock } };
+  let prismaMock: {
+    jobVacancy: { findUnique: jest.Mock };
+    company: { findFirst: jest.Mock };
+    application: { findMany: jest.Mock };
+  };
 
   beforeEach(async () => {
     prismaMock = {
+      jobVacancy: { findUnique: jest.fn() },
+      company: { findFirst: jest.fn() },
       application: {
         findMany: jest.fn(),
       },
@@ -30,9 +36,14 @@ describe('GetOfferApplicationsService', () => {
     const mockApplications = [
       { userId: 'USER#123', jobId: 'offer-123', status: 'SENT' },
     ];
+    prismaMock.jobVacancy.findUnique.mockResolvedValueOnce({
+      id: 'offer-123',
+      companyId: 'company-123',
+    });
+    prismaMock.company.findFirst.mockResolvedValueOnce({ id: 'company-123' });
     prismaMock.application.findMany.mockResolvedValueOnce(mockApplications);
 
-    const result = await service.getOfferApplications('offer-123');
+    const result = await service.getOfferApplications('user-123', 'offer-123');
 
     expect(result.statusCode).toBe(200);
     expect(result.count).toBe(1);
@@ -41,13 +52,14 @@ describe('GetOfferApplicationsService', () => {
     expect(prismaMock.application.findMany).toHaveBeenCalledWith({
       where: { jobId: 'offer-123' },
       include: { user: true },
+      orderBy: { appliedAt: 'desc' },
     });
   });
 
   it('debería manejar error de Prisma', async () => {
-    prismaMock.application.findMany.mockRejectedValueOnce(new Error('Error'));
-    await expect(service.getOfferApplications('offer-123')).rejects.toThrow(
-      InternalServerErrorException,
-    );
+    prismaMock.jobVacancy.findUnique.mockRejectedValueOnce(new Error('Error'));
+    await expect(
+      service.getOfferApplications('user-123', 'offer-123'),
+    ).rejects.toThrow(InternalServerErrorException);
   });
 });

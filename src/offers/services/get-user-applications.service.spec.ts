@@ -40,7 +40,12 @@ describe('GetUserApplicationsService', () => {
     expect(prismaMock.application.findMany).toHaveBeenCalledTimes(1);
     expect(prismaMock.application.findMany).toHaveBeenCalledWith({
       where: { userId: 'user-123' },
-      include: { jobVacancy: true },
+      orderBy: { appliedAt: 'desc' },
+      include: {
+        jobVacancy: {
+          include: { company: true },
+        },
+      },
     });
   });
 

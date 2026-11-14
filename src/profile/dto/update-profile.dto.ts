@@ -31,7 +31,9 @@ export class UpdateProfileDto {
   @IsOptional()
   nombre_empresa?: string;
 
-  @ValidateIf((o) => o.resume_url != null && o.resume_url !== '')
+  @ValidateIf(
+    (o: UpdateProfileDto) => o.resume_url != null && o.resume_url !== '',
+  )
   @IsUrl({}, { message: 'La URL de la hoja de vida no es válida.' })
   @IsOptional()
   resume_url?: string;

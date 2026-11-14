@@ -76,7 +76,12 @@ export class SigninService {
       }
 
       // 2. Ensure the role is in Supabase user_metadata so the JWT carries it
-      const currentMeta = data.user.user_metadata || {};
+      const currentMeta = (data.user.user_metadata || {}) as {
+        firstName?: string;
+        lastName?: string;
+        phone?: string;
+        role?: string;
+      };
       if (dbUser && currentMeta.role !== dbUser.role) {
         try {
           await this.supabase.auth.admin.updateUserById(supabaseUid, {

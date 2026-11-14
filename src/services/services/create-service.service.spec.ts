@@ -62,19 +62,28 @@ describe('CreateServiceService', () => {
 
   it('debería crear un servicio exitosamente', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({ role: 'CANDIDATE' });
-    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({ id: 'cat-1' });
-    prismaMock.service.create.mockResolvedValueOnce({ id: 'svc-1', title: 'Pintor' });
+    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({
+      id: 'cat-1',
+    });
+    prismaMock.service.create.mockResolvedValueOnce({
+      id: 'svc-1',
+      title: 'Pintor',
+    });
 
     const result = await service.createService('user-123', dto);
 
     expect(result.statusCode).toBe(201);
     expect(prismaMock.service.create).toHaveBeenCalledTimes(1);
-    expect(pushNotificationServiceMock.sendToCompanies).toHaveBeenCalledTimes(1);
+    expect(pushNotificationServiceMock.sendToCompanies).toHaveBeenCalledTimes(
+      1,
+    );
   });
 
   it('debería lanzar BadRequestException con P2003 (categoría inválida)', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({ role: 'CANDIDATE' });
-    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({ id: 'cat-1' });
+    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({
+      id: 'cat-1',
+    });
     prismaMock.service.create.mockRejectedValueOnce(
       new Prisma.PrismaClientKnownRequestError('fk', {
         code: 'P2003',
@@ -90,7 +99,9 @@ describe('CreateServiceService', () => {
 
   it('debería lanzar ConflictException con P2002', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({ role: 'CANDIDATE' });
-    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({ id: 'cat-1' });
+    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({
+      id: 'cat-1',
+    });
     prismaMock.service.create.mockRejectedValueOnce(
       new Prisma.PrismaClientKnownRequestError('dup', {
         code: 'P2002',
@@ -105,7 +116,9 @@ describe('CreateServiceService', () => {
 
   it('debería lanzar InternalServerErrorException con errores desconocidos', async () => {
     prismaMock.user.findUnique.mockResolvedValueOnce({ role: 'CANDIDATE' });
-    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({ id: 'cat-1' });
+    prismaMock.serviceCategory.findUnique.mockResolvedValueOnce({
+      id: 'cat-1',
+    });
     prismaMock.service.create.mockRejectedValueOnce(new Error('Fallo DB'));
 
     await expect(service.createService('user-123', dto)).rejects.toThrow(

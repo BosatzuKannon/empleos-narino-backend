@@ -7,7 +7,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+} from '../common/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { GetProfileService } from './services/get-profile.service';
 import { UpdateProfileService } from './services/update-profile.service';
@@ -29,7 +32,7 @@ export class ProfileController {
 
   @Put()
   async updateProfile(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
     const userId = req.user.userId;

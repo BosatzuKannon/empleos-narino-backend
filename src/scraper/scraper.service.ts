@@ -111,9 +111,7 @@ export class ScraperService {
       const detailTitle = clean($('.ads-details-wrapper h2').first().text());
       title = clean(listTitle) || detailTitle;
       const rawDesc = clean($('.ads-details-info').first().text());
-      cleanDesc = rawDesc
-        .replace(/^(?:FSE\s*\d+\s*|-\d+\s*)+/i, '')
-        .trim();
+      cleanDesc = rawDesc.replace(/^(?:FSE\s*\d+\s*|-\d+\s*)+/i, '').trim();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`Falló el parseo Cheerio de ${detailUrl}: ${message}`);
@@ -133,7 +131,9 @@ export class ScraperService {
       salary: 0,
     };
 
-    this.logger.log(`Payload a insertar en JobVacancy: ${JSON.stringify(payload)}`);
+    this.logger.log(
+      `Payload a insertar en JobVacancy: ${JSON.stringify(payload)}`,
+    );
 
     try {
       const existing = await this.prisma.jobVacancy.findFirst({

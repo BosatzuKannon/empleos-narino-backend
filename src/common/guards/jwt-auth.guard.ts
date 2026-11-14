@@ -15,6 +15,11 @@ interface JwtPayload {
   app_metadata?: Record<string, unknown>;
 }
 
+export interface AuthenticatedRequest {
+  headers: Record<string, string | undefined>;
+  user: { userId: string; email: string };
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
@@ -28,7 +33,7 @@ export class JwtAuthGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const authHeader = request.headers['authorization'];
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
