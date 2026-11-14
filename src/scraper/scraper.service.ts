@@ -117,6 +117,12 @@ export class ScraperService {
       throw new Error(`Falló el parseo Cheerio de ${detailUrl}: ${message}`);
     }
 
+    // ponytail: sin descripción la oferta es inservible; se descarta antes de tocar la BD.
+    if (cleanDesc.trim().length === 0) {
+      this.logger.warn(`Oferta omitida por descripción vacía: ${title}`);
+      return false;
+    }
+
     const payload: Prisma.JobVacancyUncheckedCreateInput = {
       title,
       description: cleanDesc,

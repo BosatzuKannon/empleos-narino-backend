@@ -272,6 +272,24 @@ model UserPreference {
 }
 
 // -----------------------------------------------------------------------------
+// FEATURE: CUSTOM ADVERTISEMENTS (admin-managed mini CMS)
+// -----------------------------------------------------------------------------
+
+model Advertisement {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String
+  imageUrl    String
+  redirectUrl String?
+  whatsapp    String?
+  expiresAt   DateTime
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([isActive, expiresAt])
+}
+
+// -----------------------------------------------------------------------------
 // FEATURE: SYSTEM CONFIGURATIONS
 // -----------------------------------------------------------------------------
 

@@ -38,6 +38,18 @@ export class GeneratePresignedUrlService {
     }
 
     const categoryConfig: Record<string, CategoryConfig> = {
+      ads: {
+        folder: 'ads',
+        allowedTypes: [
+          'image/jpeg',
+          'image/jpg',
+          'image/png',
+          'image/gif',
+          'image/webp',
+        ],
+        errorMessage:
+          'Tipo de archivo no permitido. Solo se permiten imágenes.',
+      },
       images: {
         folder: 'offers/images',
         allowedTypes: [

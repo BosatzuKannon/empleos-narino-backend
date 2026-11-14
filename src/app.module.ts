@@ -15,6 +15,7 @@ import { HealthModule } from './health/health.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { NotificationModule } from './notifications/notification.module';
 import { ShareModule } from './share/share.module';
+import { AdsModule } from './ads/ads.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ShareModule } from './share/share.module';
     ScraperModule,
     NotificationModule,
     ShareModule,
+    AdsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
