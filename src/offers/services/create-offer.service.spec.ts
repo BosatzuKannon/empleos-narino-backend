@@ -74,6 +74,7 @@ describe('CreateOfferService', () => {
       tipo_contrato: 'Indefinido',
       descripcion: 'Test',
       requisitos: 'Test',
+      cupos: 1,
     };
 
     const result = await service.createOffer('user-123', dto);
@@ -93,6 +94,7 @@ describe('CreateOfferService', () => {
         contractType: 'Indefinido',
         modality: 'Presencial',
         requirements: 'Test',
+        availablePositions: 1,
         status: 'ACTIVE',
         companyId: 'company-456',
       },
@@ -120,6 +122,7 @@ describe('CreateOfferService', () => {
       tipo_contrato: 'Indefinido',
       descripcion: 'Test',
       requisitos: 'Test',
+      cupos: 1,
     };
 
     await expect(service.createOffer('user-123', dto)).rejects.toThrow(

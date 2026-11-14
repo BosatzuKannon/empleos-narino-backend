@@ -17,7 +17,7 @@ import { UpdateUserPreferencesService } from './services/update-user-preferences
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
 import { UpdateUserPreferencesDto } from './dto/update-user-preferences.dto';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user: {
     userId: string;
     email?: string;

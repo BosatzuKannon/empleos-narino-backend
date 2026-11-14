@@ -8,6 +8,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { CreateServiceDto } from '../dto/create-service.dto';
 
 describe('CreateServiceService', () => {
   let service: CreateServiceService;
@@ -18,7 +19,7 @@ describe('CreateServiceService', () => {
   };
   let pushNotificationServiceMock: { sendToCompanies: jest.Mock };
 
-  const dto = {
+  const dto: CreateServiceDto = {
     categoryId: 'cat-1',
     title: 'Pintor',
     description: 'Trabajo de pintura',

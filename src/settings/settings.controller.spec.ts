@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { SettingsController } from './settings.controller';
+import {
+  SettingsController,
+  type AuthenticatedRequest,
+} from './settings.controller';
 import { CheckAppVersionService } from './services/check-app-version.service';
 import { RegisterPushTokenService } from './services/register-push-token.service';
 import { GetUserPreferencesService } from './services/get-user-preferences.service';
@@ -77,7 +80,9 @@ describe('SettingsController', () => {
 
   describe('getUserPreferences', () => {
     it('debería obtener las preferencias del usuario autenticado', async () => {
-      const req = { user: { userId: 'user-123' } };
+      const req = {
+        user: { userId: 'user-123' },
+      } as unknown as AuthenticatedRequest;
 
       const result = await controller.getUserPreferences(req);
 
@@ -97,7 +102,9 @@ describe('SettingsController', () => {
 
   describe('updateUserPreferences', () => {
     it('debería actualizar las preferencias del usuario autenticado', async () => {
-      const req = { user: { userId: 'user-123' } };
+      const req = {
+        user: { userId: 'user-123' },
+      } as unknown as AuthenticatedRequest;
       const dto = { emailMarketing: true };
 
       const result = await controller.updateUserPreferences(req, dto);
